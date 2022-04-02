@@ -1,0 +1,4 @@
+# ninja log v5
+1	370	6706195896988281	build.ninja	ffb5a71a62f5b44e
+645	898	6706195309673136	GBE.exe	9d451cd9bae75790
+3	644	6706195307188951	CMakeFiles/GBE.dir/src/main.cpp.obj	a78f327184fec7db

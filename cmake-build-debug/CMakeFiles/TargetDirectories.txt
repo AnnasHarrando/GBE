@@ -1,0 +1,3 @@
+C:/Users/annas/CLionProjects/GBE/cmake-build-debug/CMakeFiles/GBE.dir
+C:/Users/annas/CLionProjects/GBE/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/annas/CLionProjects/GBE/cmake-build-debug/CMakeFiles/rebuild_cache.dir
