@@ -1,4 +1,11 @@
 # ninja log v5
-1	370	6706195896988281	build.ninja	ffb5a71a62f5b44e
-645	898	6706195309673136	GBE.exe	9d451cd9bae75790
-3	644	6706195307188951	CMakeFiles/GBE.dir/src/main.cpp.obj	a78f327184fec7db
+1	370	6711251467230463	build.ninja	ffb5a71a62f5b44e
+120	288	6711077739062904	GBE.exe	6258c334fd0c5b04
+21	853	6710758588144210	CMakeFiles/GBE.dir/src/main.cpp.obj	a78f327184fec7db
+1	1713	6711074944766708	CMakeFiles/GBE.dir/src/emu.cpp.obj	c4ce04ee09e51bad
+2	119	6711077737411500	CMakeFiles/GBE.dir/src/cart.cpp.obj	7ccb171c6aa2e978
+28	837	6711074936028190	CMakeFiles/GBE.dir/src/inst.cpp.obj	8eef89e4f696017
+20	1113	6711074938780228	CMakeFiles/GBE.dir/src/cpu.cpp.obj	81aea08fc677384b
+1	1098	6712103594866930	CMakeFiles/GBE.dir/src/bus.cpp.obj	b45bca1a3de8f3bb
+101	1931	6712103603177580	CMakeFiles/GBE.dir/src/cpu.cpp.obj	81aea08fc677384b
+1931	2277	6712103606648924	GBE.exe	c51f18e9ff85057d
