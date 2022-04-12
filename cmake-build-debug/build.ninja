@@ -91,6 +91,20 @@ build CMakeFiles/GBE.dir/src/bus.cpp.obj: CXX_COMPILER__GBE_Debug C$:/Users/anna
   OBJECT_DIR = CMakeFiles\GBE.dir
   OBJECT_FILE_DIR = CMakeFiles\GBE.dir\src
 
+build CMakeFiles/GBE.dir/src/ram.cpp.obj: CXX_COMPILER__GBE_Debug C$:/Users/annas/CLionProjects/GBE/src/ram.cpp || cmake_object_order_depends_target_GBE
+  DEP_FILE = CMakeFiles\GBE.dir\src\ram.cpp.obj.d
+  FLAGS = -g -std=gnu++14
+  INCLUDES = -IC:/Users/annas/CLionProjects/GBE/sdl/include
+  OBJECT_DIR = CMakeFiles\GBE.dir
+  OBJECT_FILE_DIR = CMakeFiles\GBE.dir\src
+
+build CMakeFiles/GBE.dir/src/stack.cpp.obj: CXX_COMPILER__GBE_Debug C$:/Users/annas/CLionProjects/GBE/src/stack.cpp || cmake_object_order_depends_target_GBE
+  DEP_FILE = CMakeFiles\GBE.dir\src\stack.cpp.obj.d
+  FLAGS = -g -std=gnu++14
+  INCLUDES = -IC:/Users/annas/CLionProjects/GBE/sdl/include
+  OBJECT_DIR = CMakeFiles\GBE.dir
+  OBJECT_FILE_DIR = CMakeFiles\GBE.dir\src
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target GBE
@@ -99,7 +113,7 @@ build CMakeFiles/GBE.dir/src/bus.cpp.obj: CXX_COMPILER__GBE_Debug C$:/Users/anna
 #############################################
 # Link the executable GBE.exe
 
-build GBE.exe: CXX_EXECUTABLE_LINKER__GBE_Debug CMakeFiles/GBE.dir/src/main.cpp.obj CMakeFiles/GBE.dir/src/emu.cpp.obj CMakeFiles/GBE.dir/src/cart.cpp.obj CMakeFiles/GBE.dir/src/cpu.cpp.obj CMakeFiles/GBE.dir/src/inst.cpp.obj CMakeFiles/GBE.dir/src/bus.cpp.obj
+build GBE.exe: CXX_EXECUTABLE_LINKER__GBE_Debug CMakeFiles/GBE.dir/src/main.cpp.obj CMakeFiles/GBE.dir/src/emu.cpp.obj CMakeFiles/GBE.dir/src/cart.cpp.obj CMakeFiles/GBE.dir/src/cpu.cpp.obj CMakeFiles/GBE.dir/src/inst.cpp.obj CMakeFiles/GBE.dir/src/bus.cpp.obj CMakeFiles/GBE.dir/src/ram.cpp.obj CMakeFiles/GBE.dir/src/stack.cpp.obj
   FLAGS = -g
   LINK_LIBRARIES = -lSDL2main  -lSDL2  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   LINK_PATH = -LC:/Users/annas/CLionProjects/GBE/sdl/lib/x86

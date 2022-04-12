@@ -4,17 +4,22 @@ instruction instructions[0x100];
 void init(){
 
     instructions[0x00] =  {NOP, IMP};
-
+    instructions[0x01] =  {LD,R_D16,BC};
+    instructions[0x02] =  {LD,D16_R,BC,A};
+    instructions[0x03] =  {INC,R,BC};
+    instructions[0x03] =  {INC,R,B};
     instructions[0x05] =  {DEC, R, B};
     instructions[0x06] =  {LD, R_D8, B};
     instructions[0x07] =  {RLCA};
-    instructions[0x08] =  {LD, A16_R, R_NONE, SP};
+    instructions[0x08] =  {LD, A16_R, SP};
     instructions[0x09] =  {ADD, R_R, HL, BC};
-
+    instructions[0x0A] =  {LD,R_D16,BC};
     instructions[0x0B] =  {DEC, R, BC};
 
     instructions[0x0E] =  {LD, R_D8, C};
     instructions[0x0F] =  {RRCA};
+
+    instructions[0x01] =  {LD,R_D16,DE};
 
     instructions[0x14] =  {INC, R, D};
     instructions[0x15] =  {DEC, R, D};
@@ -42,17 +47,23 @@ void init(){
 
 
     instructions[0x30] =  {JR, D8, R_NONE, R_NONE,CT_NC};
-    instructions[0x31] =  {DEC, R, DE};
+    instructions[0x31] =  {LD, R_D16, SP};
     instructions[0x32] =  {LD, HLD_R, HL, A};
+
+    instructions[0x34] =  {INC, MR, HL};
+    instructions[0x34] =  {DEC, MR, HL};
 
     instructions[0x38] =  {JR, D8, R_NONE, R_NONE, CT_C};
     instructions[0x39] =  {ADD, R_R, HL, SP};
 
     instructions[0x3B] =  {DEC, R, SP};
+    instructions[0x3C] =  {INC, R, A};
+    instructions[0x3D] =  {DEC, R, A};
+
+    instructions[0x3E] =  {LD,R_A8,A};
 
     instructions[0xAF] =  {XOR, R, A};
 
-    instructions[0xC3] =  {JP, D16};
 
     instructions[0xF3] =  {DI};
 
@@ -116,7 +127,7 @@ void init(){
     instructions[0x73] =  {LD, MR_R,  HL, E};
     instructions[0x74] =  {LD, MR_R,  HL, H};
     instructions[0x75] =  {LD, MR_R,  HL, L};
-    //instructions[0x76] =  {HALT};
+    instructions[0x76] =  {HALT};
     instructions[0x77] =  {LD, MR_R,  HL, A};
     instructions[0x78] =  {LD, R_R,  A, B};
     instructions[0x79] =  {LD, R_R,  A, C};
@@ -135,6 +146,31 @@ void init(){
     instructions[0x85] =  {ADD, R_R, A, L};
     instructions[0x86] =  {ADD, R_MR, A, HL};
     instructions[0x87] =  {ADD, R_R, A, A};
+    instructions[0x88] = {ADC, R_R, A, B};
+    instructions[0x89] = {ADC, R_R, A, C};
+    instructions[0x8A] = {ADC, R_R, A, D};
+    instructions[0x8B] = {ADC, R_R, A, E};
+    instructions[0x8C] = {ADC, R_R, A, H};
+    instructions[0x8D] = {ADC, R_R, A, L};
+    instructions[0x8E] = {ADC, R_MR, A, HL};
+    instructions[0x8F] = {ADC, R_R, A, A};
+
+    instructions[0x90] = {SUB, R,B};
+    instructions[0x91] = {SUB, R,C};
+    instructions[0x92] = {SUB, R, D};
+    instructions[0x93] = {SUB, R,E};
+    instructions[0x94] = {SUB, R,H};
+    instructions[0x95] = {SUB, R,L};
+    instructions[0x96] = {SUB, MR,HL};
+    instructions[0x97] = {SUB, R,A};
+    instructions[0x98] = {SBC, R,B};
+    instructions[0x99] = {SBC, R,C};
+    instructions[0x9A] = {SBC, R,D};
+    instructions[0x9B] = {SBC, R,E};
+    instructions[0x9C] = {SBC, R,H};
+    instructions[0x9D] = {SBC, R,L};
+    instructions[0x9E] = {SBC, MR,HL};
+    instructions[0x9F] = {SBC, R,A};
 
     instructions[0xB0] =  {OR, R, B};
     instructions[0xB1] =  {OR, R, C};
@@ -153,12 +189,61 @@ void init(){
     instructions[0xBE] =  {CP, MR, HL};
     instructions[0xBF] =  {CP, R, A};
 
-    instructions[0xC6] =  {ADD, R_D8, A};
+    instructions[0xC0] =  {RET,IMP,R_NONE,R_NONE,CT_NZ};
+    instructions[0xC1] =  {POP,IMP,BC};
 
+    instructions[0xC3] =  {JP, D16};
+    instructions[0xC4] =  {CALL,D16,R_NONE,R_NONE,CT_NZ};
+    instructions[0xC5] =  {PUSH,IMP,BC};
+    instructions[0xC6] =  {ADD, R_D8, A};
+    instructions[0xC7] = {RST, IMP, R_NONE, R_NONE, CT_NONE, 0x00};
+    instructions[0xC8] =  {RET,IMP,R_NONE,R_NONE,CT_Z};
+    instructions[0xC9] =  {RET};
+
+
+    instructions[0xCC] =  {CALL,D16,R_NONE,R_NONE,CT_Z};
+    instructions[0xCD] =  {CALL,D16};
+    instructions[0xCE] =  {ADC,R_D8,A};
+
+    instructions[0xCF] = {RST, IMP, R_NONE, R_NONE, CT_NONE, 0x08};
+
+    instructions[0xD0] =  {RET,IMP,R_NONE,R_NONE,CT_NC};
+    instructions[0xD1] =  {POP,IMP,DE};
+
+    instructions[0xD4] =  {CALL,D16,R_NONE,R_NONE,CT_NC};
+    instructions[0xD5] =  {PUSH,IMP,DE};
+    instructions[0xD6] =  {SUB,D8};
+    instructions[0xD7] = {RST, IMP, R_NONE, R_NONE, CT_NONE, 0x10};
+    instructions[0xD8] =  {RET,IMP,R_NONE,R_NONE,CT_C};
+    instructions[0xC9] =  {RETI};
+
+    instructions[0xDC] =  {CALL,D16,R_NONE,R_NONE,CT_C};
+
+    instructions[0xDF] = {RST, IMP, R_NONE, R_NONE, CT_NONE, 0x18};
+
+    instructions[0xE0] =  {LD,A8_R,A};
+    instructions[0xE1] =  {POP,IMP,HL};
+
+    instructions[0xE5] =  {PUSH,IMP,HL};
+
+    instructions[0xE7] = {RST, IMP, R_NONE, R_NONE, CT_NONE, 0x20};
     instructions[0xE8] =  {ADD, R_D8, SP};
 
+    instructions[0xEA] =  {LD,A16_R,A};
+
+    instructions[0xEF] = {RST, IMP, R_NONE, R_NONE, CT_NONE, 0x28};
+
+    instructions[0xF0] =  {LD,R_A8,A};
+    instructions[0xF1] =  {POP,IMP,AF};
+
+    instructions[0xF3] =  {DI};
+
+    instructions[0xF7] = {RST, IMP, R_NONE, R_NONE, CT_NONE, 0x30};
+
+    instructions[0xF5] =  {PUSH,IMP,AF};
     instructions[0xF6] =  {OR, D8};
     instructions[0xFE] =  {CP, D8};
+    instructions[0xFF] = {RST, IMP, R_NONE, R_NONE, CT_NONE, 0x38};
 
 }
 

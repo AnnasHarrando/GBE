@@ -1,100 +1,133 @@
 #include "cpu.h"
 #include "cart.h"
 #include "inst.h"
+#include "bus.h"
 #include <iostream>
 #include <cstdlib>
 
 using namespace std;
 
-void cpu::step(){
+context cpu = { };
 
-    uint16_t cur_pc = this->pc;
-    saved_regs = regs;
+void cpu_init(){
+    cpu.regs = {{A,1}, {B,0}, {C,0}, {D,0}, {E,0}, {F,0}, {H,0}, {L,0}, {AF,1<<8}, {BC,0}, {DE,0}, {HL,0}, {SP,0}};
+     cpu.pc = 0x100;
+}
 
-    opcode = cart_read(this->pc++);
-    printf("op: %02X, pc: %04X\n", opcode, cur_pc);
-    printf("AF: %02X%02X, BC: %02X%02X, DE: %02X%02X, HL: %02X%02X\n",regs[A],regs[F],regs[B],regs[C],regs[D],regs[E],regs[H],regs[L]);
 
-    cur_inst = get_instruction(opcode);
-    printf("%s\n", inst_name(cur_inst->type));
+void step(){
 
-    load_in_mem = 0;
+    uint16_t cur_pc =  cpu.pc;
+    cpu.saved_regs = cpu.regs;
+
+    cpu.opcode = bus_read( cpu.pc++);
+    cpu.cur_inst = get_instruction(cpu.opcode);
+    printf("%04X: %-7s (%02X %02X %02X)\n", cur_pc, inst_name(cpu.cur_inst->type), cpu.opcode, bus_read( cpu.pc), bus_read( cpu.pc+1));
+    printf("AF: %02X%02X, BC: %02X%02X, DE: %02X%02X, HL: %02X%02X\n\n",cpu.regs[A],cpu.regs[F],cpu.regs[B],cpu.regs[C],cpu.regs[D],cpu.regs[E],cpu.regs[H],cpu.regs[L]);
+
+    cpu.load_in_mem = 0;
     fetch_data();
     exec();
     correct_regs();
-    if(this->pc == 500) exit(-2);
+    if( cpu.pc == 500) exit(-2);
 }
 
-void cpu::fetch_data(){
-    switch(cur_inst->mode){
+void fetch_data(){
+    switch(cpu.cur_inst->mode){
         case IMP:
             break;
         case R:
-            fetch = regs[cur_inst->reg_1];
+            cpu.fetch = cpu.regs[cpu.cur_inst->reg_1];
             break;
         case R_R:
-            fetch = regs[cur_inst->reg_2];
+            cpu.fetch = cpu.regs[cpu.cur_inst->reg_2];
             break;
         case R_D8:
         case D8:
-            fetch = cart_read(this->pc);
-            this->pc++;
+            cpu.fetch = bus_read( cpu.pc);
+             cpu.pc++;
             break;
         case R_D16:
         case D16: {
-            uint16_t low = cart_read(this->pc);
-            this->pc++;
-            uint16_t high = cart_read(this->pc);
-            this->pc++;
-            fetch = low | (high << 8);
+            uint16_t low = bus_read( cpu.pc);
+             cpu.pc++;
+            uint16_t high = bus_read( cpu.pc);
+             cpu.pc++;
+            cpu.fetch = low | (high << 8);
         }
             break;
         case D16_R:
         case A16_R: {
-            uint16_t low = cart_read(this->pc);
-            this->pc++;
-            uint16_t high = cart_read(this->pc);
-            this->pc++;
-            load_in_mem = low | (high << 8);
-            fetch = regs[cur_inst->reg_2];
+            uint16_t low = bus_read( cpu.pc);
+             cpu.pc++;
+            uint16_t high = bus_read( cpu.pc);
+             cpu.pc++;
+            cpu.load_in_mem = low | (high << 8);
+            cpu.fetch = cpu.regs[cpu.cur_inst->reg_1];
             }
             break;
         case R_A8:
-
+            cpu.fetch = bus_read( cpu.pc);
+             cpu.pc++;
+            break;
+        case A8_R:
+            cpu.load_in_mem = bus_read( cpu.pc) | 0xFF00;
+             cpu.pc++;
+            cpu.fetch = cpu.regs[cpu.cur_inst->reg_1];
+            break;
+        case R_A16:{
+            uint16_t low = bus_read( cpu.pc);
+             cpu.pc++;
+            uint16_t high = bus_read( cpu.pc);
+             cpu.pc++;
+            cpu.fetch = bus_read(low | (high << 8));
+        } break;
         case MR:
-            load_in_mem = regs[cur_inst->reg_1];
+            cpu.load_in_mem = cpu.regs[cpu.cur_inst->reg_1];
             break;
         case R_MR:
-            if(cur_inst->reg_2 == C) fetch = regs[cur_inst->reg_2] |= 0xFF00;
-            else fetch = regs[cur_inst->reg_2];
+            if(cpu.cur_inst->reg_2 == C) cpu.fetch = cpu.regs[cpu.cur_inst->reg_2] |= 0xFF00;
+            else cpu.fetch = cpu.regs[cpu.cur_inst->reg_2];
             break;
         case MR_R:
-            load_in_mem = regs[cur_inst->reg_1];
-            if(cur_inst->reg_1 == C) load_in_mem |= 0xFF00;
-            fetch = regs[cur_inst->reg_2];
+            cpu.load_in_mem = cpu.regs[cpu.cur_inst->reg_1];
+            if(cpu.cur_inst->reg_1 == C) cpu.load_in_mem |= 0xFF00;
+            cpu.fetch = cpu.regs[cpu.cur_inst->reg_2];
+            break;
+        case MR_D8:
+            cpu.load_in_mem = cpu.regs[cpu.cur_inst->reg_1];
+            cpu.fetch = bus_read( cpu.pc);
+             cpu.pc++;
             break;
         case HLD_R:
-            load_in_mem = regs[HL];
-            fetch = regs[A];
-            regs[HL]--;
+            cpu.load_in_mem = cpu.regs[HL];
+            cpu.fetch = cpu.regs[A];
+            cpu.regs[HL]--;
             break;
         case HLI_R:
-            load_in_mem = regs[HL];
-            fetch = regs[A];
-            regs[HL]++;
+            cpu.load_in_mem = cpu.regs[HL];
+            cpu.fetch = cpu.regs[A];
+            cpu.regs[HL]++;
             break;
-
+        case HL_SPR:{
+            signed char temp = (signed char) bus_read( cpu.pc);
+            cpu.regs[SP] += temp;
+            cpu.fetch = cpu.regs[SP];
+        }
+        break;
         default:
-            printf("Unknown Addressing Mode! %d (%02X)\n", cur_inst->mode, opcode);
+            printf("Unknown Addressing Mode! %d (%02X)\n", cpu.cur_inst->mode, cpu.opcode);
             exit(-7);
     }
 }
 
-bool cpu::cond(){
-    bool z = ((regs[F])>>(7)) & 1;
-    bool c = ((regs[F])>>(4)) & 1;
 
-    switch(cur_inst->cond) {
+
+bool cond(){
+    bool z = ((cpu.regs[F])>>(7)) & 1;
+    bool c = ((cpu.regs[F])>>(4)) & 1;
+
+    switch(cpu.cur_inst->cond) {
         case  CT_NONE: return true;
         case  CT_C: return c;
         case  CT_NC: return !c;
@@ -103,110 +136,155 @@ bool cpu::cond(){
     }
 }
 
-void cpu::exec(){
-    switch(cur_inst->type){
-        case   I_NONE:
+void exec(){
+    switch(cpu.cur_inst->type){
+        case I_NONE:
             printf("Unknown type   I_NONE");
             exit(-3);
             break;
         case NOP:
             break;
         case JP:
-            printf("%i\n",fetch);
-            if(cond()) this->pc = fetch;
+            if(cond())  cpu.pc = cpu.fetch;
             break;
         case XOR:
-            regs[A] ^= fetch;
-            set_flags(regs[A],0,0,0);
+            cpu.regs[A] ^= cpu.fetch;
+            set_flags(cpu.regs[A],0,0,0);
             break;
         case LD:
-            if(load_in_mem != 0){
-                if(opcode == 0x08){
-                    cart_write(load_in_mem,regs[SP] & 0xFF);
-                    cart_write(load_in_mem+1,regs[SP] >> 8);
+            if(cpu.load_in_mem != 0){
+                if(cpu.opcode == 0x08){
+                    bus_write(cpu.load_in_mem,cpu.regs[SP] & 0xFF);
+                    bus_write(cpu.load_in_mem+1,cpu.regs[SP] >> 8);
                 }
-                cart_write(load_in_mem,fetch);
+                printf("%04X\n",cpu.load_in_mem);
+                bus_write(cpu.load_in_mem,cpu.regs[cpu.cur_inst->reg_1]);
             }
-            else regs[cur_inst->reg_1] = fetch;
+            else cpu.regs[cpu.cur_inst->reg_1] = cpu.fetch;
+            if(cpu.opcode == 0xF8) set_flags(0,0,(cpu.regs[cpu.cur_inst->reg_2] & 0xF) + (cpu.fetch & 0xF) > 0xF,(cpu.regs[cpu.cur_inst->reg_2] & 0xFF) + (cpu.fetch & 0xFF) > 0xFF);
             break;
         case DEC:
-            if(load_in_mem != 0) {
-                cart_write(load_in_mem, cart_read(load_in_mem)-1);
-                set_flags(cart_read(load_in_mem) == 0,1,(cart_read(load_in_mem) & 0xF) == 0xF,-1);
+            if(cpu.load_in_mem != 0) {
+                bus_write(cpu.load_in_mem, bus_read(cpu.load_in_mem)-1);
+                set_flags(bus_read(cpu.load_in_mem) == 0,1,(bus_read(cpu.load_in_mem) & 0xF) == 0xF,-1);
             }
             else {
-                regs[cur_inst->reg_1]--;
-                if ((opcode & 0xB) != 0xB) set_flags(regs[cur_inst->reg_1] == 0,1,(regs[cur_inst->reg_1] & 0xF) == 0xF,-1);
+                cpu.regs[cpu.cur_inst->reg_1]--;
+                if ((cpu.opcode & 0xB) != 0xB) set_flags(cpu.regs[cpu.cur_inst->reg_1] == 0,1,(cpu.regs[cpu.cur_inst->reg_1] & 0xF) == 0xF,-1);
             }
             break;
         case INC:
-            if(load_in_mem != 0) {
-                cart_write(load_in_mem, cart_read(load_in_mem)+1);
-                set_flags(cart_read(load_in_mem) == 0,0,(cart_read(load_in_mem) & 0xF) == 0xF,-1);
+            if(cpu.opcode == 0x34) {
+                bus_write(cpu.load_in_mem, bus_read(cpu.load_in_mem)+1);
+                set_flags(bus_read(cpu.load_in_mem) == 0,0,(bus_read(cpu.load_in_mem) & 0xF) == 0xF,-1);
             }
             else {
-                regs[cur_inst->reg_1]++;
-                if ((opcode & 0x3) != 0x3) set_flags(regs[cur_inst->reg_1] == 0,0,(regs[cur_inst->reg_1] & 0xF) == 0xF,-1);
+                cpu.regs[cpu.cur_inst->reg_1]++;
+                if ((cpu.opcode & 0x03) != 0x03) set_flags(cpu.regs[cpu.cur_inst->reg_1] == 0,0,(cpu.regs[cpu.cur_inst->reg_1] & 0xF) == 0xF,-1);
             }
             break;
         case JR:
             if(cond()){
-                this->pc += fetch;
+                 cpu.pc += (signed char)(cpu.fetch & 0xFF);
             }
             break;
         case RRCA: {
-            uint8_t temp = regs[A];
-            regs[A] = (regs[A] >> 1) || ((regs[A] & 0x1) << 7);
+            uint8_t temp = cpu.regs[A];
+            cpu.regs[A] = (cpu.regs[A] >> 1) || ((cpu.regs[A] & 0x1) << 7);
             set_flags(0, 0, 0, temp);
         }
             break;
         case RRA: {
-            uint8_t temp = regs[A] & 0x1;
-            regs[A] = (regs[A] >> 1) || (regs[F] & 0x80);
+            uint8_t temp = cpu.regs[A] & 0x1;
+            cpu.regs[A] = (cpu.regs[A] >> 1) || (cpu.regs[F] & 0x80);
             set_flags(0, 0, 0, temp);
         }
             break;
         case OR:
-            if(load_in_mem != 0) regs[A] |= cart_read(load_in_mem);
-            else regs[A] |= fetch;
-            set_flags(regs[A],0,0,0);
+            if(cpu.load_in_mem != 0) cpu.regs[A] |= bus_read(cpu.load_in_mem);
+            else cpu.regs[A] |= cpu.fetch;
+            set_flags(cpu.regs[A],0,0,0);
             break;
         case CP: {
-            int temp = (int) regs[A] - (int) fetch;
-            set_flags(temp == 0, 1, ((int) regs[A] & 0xF) - ((int) fetch & 0xF) < 0, temp < 0);
+            int temp = (int) cpu.regs[A] - (int) cpu.fetch;
+            set_flags(temp == 0, 1, ((int) cpu.regs[A] & 0xF) - ((int) cpu.fetch & 0xF) < 0, temp < 0);
         }
             break;
         case ADD:
-            switch (opcode & 0xF0) {
+            switch (cpu.opcode & 0xF0) {
                 case 0x80:
                 case 0xC0:
-                    regs[cur_inst->reg_1] += fetch;
-                    set_flags(regs[cur_inst->reg_1] == 0,0,(regs[cur_inst->reg_1] & 0xF) + (fetch & 0xF) > 0x0F,(int)regs[cur_inst->reg_1] + (int)fetch > 0xFF);
+                    cpu.regs[cpu.cur_inst->reg_1] += cpu.fetch;
+                    set_flags(cpu.regs[cpu.cur_inst->reg_1] == 0,0,(cpu.regs[cpu.cur_inst->reg_1] & 0xF) + (cpu.fetch & 0xF) > 0x0F,(int)cpu.regs[cpu.cur_inst->reg_1] + (int)cpu.fetch > 0xFF);
                     break;
                 case 0xE0: {
-                    signed char temp = (uint8_t) fetch;
-                    regs[SP] += temp;
-                    set_flags(0, 0, (regs[cur_inst->reg_1] & 0xFF) + (fetch & 0xFF) > 0xFF,
-                              (uint32_t) regs[cur_inst->reg_1] + (uint32_t) fetch > 0xFFFF);
+                    signed char temp = (signed char) cpu.fetch;
+                    cpu.regs[SP] += temp;
+                    set_flags(0, 0, (cpu.regs[cpu.cur_inst->reg_1] & 0xFF) + (cpu.fetch & 0xFF) > 0xFF,
+                              (uint32_t) cpu.regs[cpu.cur_inst->reg_1] + (uint32_t) cpu.fetch > 0xFFFF);
                 }
                     break;
                 default:
-                    regs[cur_inst->reg_1] += fetch;
-                    set_flags(-1, 0, (regs[cur_inst->reg_1] & 0xFF) + (fetch & 0xFF) > 0xFF,
-                              (uint32_t) regs[cur_inst->reg_1] + (uint32_t) fetch > 0xFFFF);
+                    cpu.regs[cpu.cur_inst->reg_1] += cpu.fetch;
+                    set_flags(-1, 0, (cpu.regs[cpu.cur_inst->reg_1] & 0xFF) + (cpu.fetch & 0xFF) > 0xFF,
+                              (uint32_t) cpu.regs[cpu.cur_inst->reg_1] + (uint32_t) cpu.fetch > 0xFFFF);
             }
             break;
+        case ADC:{
+            uint16_t a = cpu.regs[A];
+            cpu.regs[A] = (cpu.regs[A] + cpu.fetch + (cpu.regs[F] >> 4) & 0x1) & 0xFF;
+            set_flags(a == 0, 0, (a & 0xF) + (cpu.fetch & 0xF) + ((cpu.regs[F] >> 4) & 0x1) > 0xF, a+cpu.fetch+((cpu.regs[F] >> 4) & 0x1) > 0xFF);
+            }
+            break;
+        case SUB:
+            set_flags(cpu.regs[A] - cpu.fetch == 0, 1, (int)(cpu.regs[A] & 0xF) - (int)(cpu.fetch & 0xF) < 0,
+                      (int)cpu.regs[A] - (int)cpu.fetch < 0);
+            cpu.regs[A] -= cpu.fetch;
+            break;
+        case SBC:
+            set_flags(cpu.regs[A] - cpu.fetch - ((cpu.regs[F] >> 4) & 0x1) == 0, 1,
+                      (int)(cpu.regs[A] & 0xF) - (int)(cpu.fetch & 0xF) - (int)((cpu.regs[F] >> 4) & 0x1) < 0,
+                      (int)cpu.regs[A] - (int)cpu.fetch - (int)((cpu.regs[F] >> 4) & 0x1) < 0);
+            cpu.regs[A] -= (cpu.fetch + (cpu.regs[F] >> 4) & 0x1);
+            break;
         case RLCA: {
-            uint8_t temp = regs[A] >> 7;
-            regs[A] = (regs[A] << 1) || temp;
+            uint8_t temp = cpu.regs[A] >> 7;
+            cpu.regs[A] = (cpu.regs[A] << 1) || temp;
             set_flags(0,0,0,temp);
             }
             break;
         case RLA: {
-            uint8_t temp = regs[A] >> 7;
-            regs[A] = (regs[A] << 1) || (regs[F] & 0x80) >> 7;
+            uint8_t temp = cpu.regs[A] >> 7;
+            cpu.regs[A] = (cpu.regs[A] << 1) || (cpu.regs[F] & 0x80) >> 7;
             set_flags(0, 0, 0, temp);
             }
+            break;
+        case DI:
+            cpu.master_enabled = false;
+            break;
+        case POP:
+            if(cpu.cur_inst->reg_1 == AF) cpu.regs[AF] = pop() & 0xFFF0;
+            else cpu.regs[cpu.cur_inst->reg_1] = pop();
+            break;
+        case PUSH:
+            push(cpu.regs[cpu.cur_inst->reg_1]);
+            break;
+        case CALL:
+            if(cond()){
+                push(cpu.pc);
+                cpu.pc = cpu.fetch;
+            }
+            break;
+        case RET:
+            if(cond()) cpu.pc = pop();
+            break;
+        case RETI:
+            cpu.master_enabled = true;
+            cpu.pc = pop();
+            break;
+        case RST:
+            push(cpu.pc);
+            cpu.pc = bus_read(cpu.cur_inst->param);
             break;
         default:
             printf("Unknown type");
@@ -215,30 +293,51 @@ void cpu::exec(){
     }
 }
 
-void cpu::set_flags(uint8_t z, uint8_t n, uint8_t h, uint8_t c){
+void set_flags(uint8_t z, uint8_t n, uint8_t h, uint8_t c){
     if(z >= 0) BIT_SET(7,z);
     if(n >= 0) BIT_SET(6,n);
     if(h >= 0) BIT_SET(5,h);
     if(c >= 0) BIT_SET(4,c);
 }
 
-void cpu::correct_regs(){
-    if(regs[A] != saved_regs[A] || regs[F] != saved_regs[F]) regs[AF] = regs[A] << 8 | regs[F];
-    if(regs[B] != saved_regs[B] || regs[C] != saved_regs[C]) regs[BC] = regs[B] << 8 | regs[C];
-    if(regs[D] != saved_regs[D] || regs[E] != saved_regs[E]) regs[DE] = regs[D] << 8 | regs[E];
-    if(regs[H] != saved_regs[H] || regs[L] != saved_regs[L]) regs[HL] = regs[H] << 8 | regs[L];
+void correct_regs(){
+    if(cpu.regs[A] != cpu.saved_regs[A] || cpu.regs[F] != cpu.saved_regs[F]) cpu.regs[AF] = cpu.regs[A] << 8 | cpu.regs[F];
+    if(cpu.regs[B] != cpu.saved_regs[B] || cpu.regs[C] != cpu.saved_regs[C]) cpu.regs[BC] = cpu.regs[B] << 8 | cpu.regs[C];
+    if(cpu.regs[D] != cpu.saved_regs[D] || cpu.regs[E] != cpu.saved_regs[E]) cpu.regs[DE] = cpu.regs[D] << 8 | cpu.regs[E];
+    if(cpu.regs[H] != cpu.saved_regs[H] || cpu.regs[L] != cpu.saved_regs[L]) cpu.regs[HL] = cpu.regs[H] << 8 | cpu.regs[L];
 
-    if(regs[BC] == saved_regs[BC]){
-        regs[B] = regs[BC] >> 8;
-        regs[C] = regs[BC] & 0x00FF;
+    if(cpu.regs[BC] == cpu.saved_regs[BC]){
+        cpu.regs[B] = cpu.regs[BC] >> 8;
+        cpu.regs[C] = cpu.regs[BC] & 0x00FF;
     }
-    else if(regs[DE] == saved_regs[DE]){
-        regs[D] = regs[DE] >> 8;
-        regs[E] = regs[DE] & 0x00FF;
+    else if(cpu.regs[DE] == cpu.saved_regs[DE]){
+        cpu.regs[D] = cpu.regs[DE] >> 8;
+        cpu.regs[E] = cpu.regs[DE] & 0x00FF;
     }
-    else if(regs[HL] == saved_regs[HL]){
-        regs[H] = regs[HL] >> 8;
-        regs[L] = regs[HL] & 0x00FF;
+    else if(cpu.regs[HL] == cpu.saved_regs[HL]){
+        cpu.regs[H] = cpu.regs[HL] >> 8;
+        cpu.regs[L] = cpu.regs[HL] & 0x00FF;
     }
+}
+
+uint8_t get_ie_register(){
+    return cpu.ie_register;
+}
+void set_ie_register(uint8_t val){
+    cpu.ie_register = val;
+};
+
+void push(uint16_t val){
+    cpu.regs[SP]--;
+    bus_write(cpu.regs[SP],cpu.regs[BC] >> 8);
+    cpu.regs[SP]--;
+    bus_write(cpu.regs[SP],cpu.regs[BC] & 0xFF);
+}
+
+uint16_t pop(){
+    uint8_t high = bus_read(cpu.regs[SP]++);
+    uint8_t low = bus_read(cpu.regs[SP]++);
+
+    return (high << 8) | low;
 }
 

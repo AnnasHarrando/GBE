@@ -105,6 +105,7 @@ typedef struct instruction{
     REG reg_1 = R_NONE;
     REG reg_2 = R_NONE;
     COND cond = CT_NONE;
+    uint8_t param = 0x00;
 
 } instruction;
 
