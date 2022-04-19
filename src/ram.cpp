@@ -1,24 +1,17 @@
 #include "ram.h"
 
-static uint8_t wram[0x2000];
-static uint8_t hram[0x80];
-
-uint8_t wram_read(uint16_t addr){
-    addr -= 0xC000;
-    return wram[addr];
+uint8_t ram::wram_read(uint16_t addr){
+    return wram[addr - 0xC000];
 }
 
-void wram_write(uint16_t addr, uint8_t val){
-    addr -= 0xC000;
-    hram[addr] = val;
+void ram::wram_write(uint16_t addr, uint8_t val){
+    wram[addr - 0xC000] = val;
 }
 
-uint8_t hram_read(uint16_t addr){
-    addr -= 0xC000;
-    return wram[addr];
+uint8_t ram::hram_read(uint16_t addr){
+    return hram[addr - 0xC000];
 }
 
-void hram_write(uint16_t addr, uint8_t val){
-    addr -= 0xC000;
-    hram[addr] = val;
+void ram::hram_write(uint16_t addr, uint8_t val){
+    hram[addr - 0xC000] = val;
 }
