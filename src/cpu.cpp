@@ -215,7 +215,7 @@ void cpu::exec(){
             break;
         case RRA: {
             uint8_t temp = regs[A] & 0x1;
-            regs[A] = (regs[A] >> 1) || (((regs[F] >> 4) & 0x1) << 7);
+            regs[A] = (regs[A] >> 1) | ((((regs[F] >> 4) & 0x1) << 7) & 0xFF);
             set_flags(0, 0, 0, temp);
         }
             break;
@@ -277,7 +277,7 @@ void cpu::exec(){
             break;
         case RLA: {
             uint8_t temp = (regs[A] >> 7) & 0x1;
-            regs[A] = (regs[A] << 1) || ((regs[F] >> 4) & 0x1);
+            regs[A] = (regs[A] << 1) || temp;
             set_flags(0, 0, 0, temp);
             }
             break;
@@ -314,7 +314,7 @@ void cpu::exec(){
         case DAA:{
             uint8_t u = 0;
             int fc = 0;
-            if(((regs[F] >> 5) & 0x1) || (!((regs[F] >> 6) & 0x1) && (regs[A] & 0xF) > 9)) u = 6;
+            if(((regs[F] >> 5) & 0x1) || (!((regs[F] >> 6) & 0x1) && ((regs[A] & 0xF) > 9))) u = 6;
             if(((regs[F] >> 4) & 0x1) || (!((regs[F] >> 6) & 0x1) && regs[A] > 99)){
                 u |= 0x60;
                 fc = 1;
