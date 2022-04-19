@@ -24,9 +24,13 @@ public:
 
 
     cpu(){
-        regs = {{A,1}, {B,0}, {C,0}, {D,0}, {E,0}, {F,0}, {H,0}, {L,0}, {AF,1<<8}, {BC,0}, {DE,0}, {HL,0}, {SP,0xFFFE}};
+        regs = {{A,0x01}, {B,0x00}, {C,0x13}, {D,0x00}, {E,0xD8}, {F,0xB0}, {H,0x01}, {L,0x4D}, {AF,0x01B0}, {BC,0x0013}, {DE,0x00D8}, {HL,0x014D}, {SP,0xFFFE}};
         pc = 0x100;
         halt = false;
+        ie_register = 0;
+        int_flags = 0;
+        master_enabled = false;
+        ime = false;
     }
 
     void step();
@@ -46,6 +50,8 @@ public:
     void check_interrupt();
 
     bool check_int(uint16_t addr, uint8_t interrupt);
+
+    void get_interrupt(uint8_t interrupt);
 
     void cb();
 };

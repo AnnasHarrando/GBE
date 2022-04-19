@@ -13,6 +13,8 @@ ram ram;
 io io;
 bool running = true;
 
+uint8_t ticks = 0;
+
 char dbg_msg[1024];
 uint16_t msg_size = 0;
 
@@ -43,6 +45,7 @@ DWORD WINAPI cpu_run(LPVOID lpParameter)
 int start(int argc, char **argv) {
     cart.cart_load(argv[1]);
     init();
+    ticks = 0;
 
     HANDLE hThread = CreateThread(
             NULL,    // Thread attributes
@@ -145,5 +148,24 @@ void bus_write(uint16_t addr, uint8_t val) {
     else if(addr == 0xFFFF){
         //CPU SET ENABLE REGISTER
         cpu.set_ie_register(val);
+    }
+}
+
+uint8_t get_int_flags(){
+    return cpu.int_flags;
+}
+
+void set_int_flags(uint8_t val){
+    cpu.int_flags = val;
+}
+
+void get_interrupt(uint8_t val){
+    cpu.get_interrupt(val);
+}
+
+void cycles(uint8_t cycle){
+    for(int i = 0; i<(cycle*4); i++){
+        ticks++;
+        tick();
     }
 }

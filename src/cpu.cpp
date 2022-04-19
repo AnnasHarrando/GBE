@@ -11,11 +11,11 @@ void cpu::step(){
 
         opcode = bus_read(pc++);
         cur_inst = get_instruction(opcode);
+        cycles(1);
         printf("%04X: %-7s (%02X %02X %02X)\n", cur_pc, inst_name(cur_inst->type), opcode, bus_read(pc),
                bus_read(pc + 1));
         printf("AF: %02X%02X, BC: %02X%02X, DE: %02X%02X, HL: %02X%02X\n", regs[A], regs[F], regs[B],
                regs[C], regs[D], regs[E], regs[H], regs[L]);
-        printf("%04X %04X %04X %04X\n\n",regs[AF],regs[BC],regs[DE],regs[HL]);
 
         load_in_mem = 0;
         fetch_data();
@@ -23,6 +23,7 @@ void cpu::step(){
         correct_regs();
     }
     else{
+        cycles(1);
 
         if(int_flags){
             halt = false;
@@ -50,61 +51,72 @@ void cpu::fetch_data(){
         case R_D8:
         case D8:
             fetch = bus_read( pc);
+            cycles(1);
             pc++;
             break;
         case R_D16:
         case D16: {
             uint16_t low = bus_read( pc);
-             pc++;
+            cycles(1);
+            pc++;
             uint16_t high = bus_read( pc);
-             pc++;
+            cycles(1);
+            pc++;
             fetch = low | (high << 8);
         }
             break;
         case D16_R:
         case A16_R: {
             uint16_t low = bus_read( pc);
-             pc++;
+            cycles(1);
+            pc++;
             uint16_t high = bus_read( pc);
-             pc++;
+            cycles(1);
+            pc++;
             load_in_mem = low | (high << 8);
             fetch = regs[cur_inst->reg_1];
             }
             break;
         case R_A8:
             fetch = bus_read( pc);
-             pc++;
+            cycles(1);
+            pc++;
             break;
         case A8_R:
             load_in_mem = bus_read( pc) | 0xFF00;
-             pc++;
+            cycles(1);
+            pc++;
             fetch = regs[cur_inst->reg_1];
             break;
         case R_A16:{
             uint16_t low = bus_read( pc);
+            cycles(1);
              pc++;
             uint16_t high = bus_read( pc);
+            cycles(1);
              pc++;
             fetch = bus_read(low | (high << 8));
+            cycles(1);
         } break;
         case MR:
             load_in_mem = regs[cur_inst->reg_1];
+            cycles(1);
             break;
         case R_MR:
             if(cur_inst->reg_2 == C) fetch = bus_read(regs[cur_inst->reg_2] |= 0xFF00);
             else fetch = bus_read(regs[cur_inst->reg_2]);
+            cycles(1);
             break;
         case MR_R:
             load_in_mem = regs[cur_inst->reg_1];
-            printf("%04X ",load_in_mem);
             if(cur_inst->reg_1 == C) load_in_mem |= 0xFF00;
             fetch = regs[cur_inst->reg_2];
-            printf("%04X\n",load_in_mem);
             break;
         case MR_D8:
             load_in_mem = regs[cur_inst->reg_1];
             fetch = bus_read( pc);
-             pc++;
+            cycles(1);
+            pc++;
             break;
         case HLD_R:
             load_in_mem = regs[HL];
@@ -118,14 +130,17 @@ void cpu::fetch_data(){
             break;
         case R_HLI:
             fetch = bus_read(regs[HL]);
+            cycles(1);
             regs[HL]++;
             break;
         case R_HLD:
             fetch = bus_read(regs[HL]);
+            cycles(1);
             regs[HL]--;
             break;
         case HL_SPR:{
             signed char temp = (signed char) bus_read( pc);
+            cycles(1);
             regs[SP] += temp;
             fetch = regs[SP];
         }
@@ -160,7 +175,10 @@ void cpu::exec(){
         case NOP:
             break;
         case JP:
-            if(cond())  pc = fetch;
+            if(cond()) {
+                pc = fetch;
+                cycles(1);
+            }
             break;
         case XOR:
             regs[A] ^= (fetch & 0xFF);
@@ -171,11 +189,12 @@ void cpu::exec(){
                 if(opcode == 0x08){
                     bus_write(load_in_mem,regs[SP] & 0xFF);
                     bus_write(load_in_mem+1,regs[SP] >> 8);
+                    cycles(1);
                 }
-                printf("%04X\n",load_in_mem);
-                bus_write(load_in_mem,fetch);
+                else bus_write(load_in_mem,fetch);
             }
             else regs[cur_inst->reg_1] = fetch;
+            cycles(1);
             if(opcode == 0xF8) set_flags(0,0,(regs[cur_inst->reg_2] & 0xF) + (fetch & 0xF) > 0xF,(regs[cur_inst->reg_2] & 0xFF) + (fetch & 0xFF) > 0xFF);
             break;
         case DEC:
@@ -185,9 +204,13 @@ void cpu::exec(){
             }
             else {
                 if(cur_inst->reg_1 < AF) regs[cur_inst->reg_1] = (regs[cur_inst->reg_1] - 1) & 0xFF;
-                else regs[cur_inst->reg_1] = (regs[cur_inst->reg_1] - 1);
+                else {
+                    regs[cur_inst->reg_1] = (regs[cur_inst->reg_1] - 1);
+                    cycles(1);
+                }
                 if ((opcode & 0xB) != 0xB) set_flags(regs[cur_inst->reg_1] == 0,1,(regs[cur_inst->reg_1] & 0xF) == 0xF,-1);
             }
+            cycles(1);
             break;
         case INC:
             if(opcode == 0x34) {
@@ -195,16 +218,19 @@ void cpu::exec(){
                 set_flags(bus_read(load_in_mem)-1 == 0,0,(bus_read(load_in_mem) & 0xF) == 0xF,-1);
             }
             else {
-                if(cur_inst->reg_1 < AF){
-                    regs[cur_inst->reg_1] = (regs[cur_inst->reg_1] + 1) & 0xFF;
+                if(cur_inst->reg_1 < AF) regs[cur_inst->reg_1] = (regs[cur_inst->reg_1] + 1) & 0xFF;
+                else {
+                    regs[cur_inst->reg_1] = (regs[cur_inst->reg_1] + 1);
+                    cycles(1);
                 }
-                else regs[cur_inst->reg_1] = (regs[cur_inst->reg_1] + 1);
                 if ((opcode & 0x03) != 0x03) set_flags(regs[cur_inst->reg_1] == 0,0,(regs[cur_inst->reg_1] & 0xF) == 0xF,-1);
             }
+            cycles(1);
             break;
         case JR:
             if(cond()){
                  pc += (char)fetch;
+                cycles(1);
             }
             break;
         case RRCA: {
@@ -241,6 +267,7 @@ void cpu::exec(){
                     break;
                 case 0xE0: {
                     signed char temp = (signed char) fetch;
+                    cycles(1);
                     regs[SP] += temp;
                     set_flags(0, 0, (regs[cur_inst->reg_1] & 0xF) + (fetch & 0xF) > 0xF,
                               (int)(regs[cur_inst->reg_1] & 0xFF) + (int)(fetch & 0xFF) > 0xFF);
@@ -248,9 +275,11 @@ void cpu::exec(){
                     break;
                 default:
                     regs[cur_inst->reg_1] += fetch;
+                    cycles(1);
                     set_flags(-1, 0, (regs[cur_inst->reg_1] & 0xFFF) + (fetch & 0xFFF) > 0xFFF,
                               (uint32_t) regs[cur_inst->reg_1] + (uint32_t) fetch > 0xFFFF);
             }
+            cycles(1);
             break;
         case ADC:{
             uint16_t a = regs[A];
@@ -293,6 +322,7 @@ void cpu::exec(){
             break;
         case PUSH:
             push(regs[cur_inst->reg_1]);
+            cycles(1);
             break;
         case CALL:
             if(cond()){
@@ -390,11 +420,13 @@ void cpu::push(uint16_t val){
     bus_write(regs[SP],(val >> 8) & 0xFF);
     regs[SP]--;
     bus_write(regs[SP],val & 0xFF);
+    cycles(2);
 }
 
 uint16_t cpu::pop(){
     uint8_t low = bus_read(regs[SP]++);
     uint8_t high = bus_read(regs[SP]++);
+    cycles(2);
 
     return (high << 8) | low;
 }
@@ -430,7 +462,12 @@ void cpu::cb(){
     else if((cb_op & 0xF) == 6 || (cb_op & 0xF) == 14) cb_reg = HL;
     else if((cb_op & 0xF) == 7 || (cb_op & 0xF) == 15) cb_reg = A;
 
-    if(cb_reg == HL) cb_fetch = bus_read(regs[HL]);
+    cycles(1);
+
+    if(cb_reg == HL) {
+        cb_fetch = bus_read(regs[HL]);
+        cycles(2);
+    }
     else cb_fetch = regs[cb_reg];
 
     uint8_t val;
@@ -485,4 +522,8 @@ void cpu::cb(){
         if(cb_reg == HL) bus_write(regs[HL],val);
         else regs[cb_reg] = val;
     }
+}
+
+void cpu::get_interrupt(uint8_t interrupt) {
+    int_flags |= interrupt;
 }
