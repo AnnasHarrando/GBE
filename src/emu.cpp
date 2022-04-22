@@ -3,6 +3,7 @@
 #include "cart.h"
 #include "ram.h"
 #include "io.h"
+#include "ppu.h"
 #include <iostream>
 
 using namespace std;
@@ -11,6 +12,7 @@ cpu cpu;
 cart cart;
 ram ram;
 io io;
+ppu ppu;
 bool running = true;
 
 uint8_t ticks = 0;
@@ -21,13 +23,11 @@ uint16_t msg_size = 0;
 void dbg_update() {
     if (bus_read(0xFF02) == 0x81) {
         uint8_t c = bus_read(0xFF01);
-        printf("adding to dbg\n");
-        printf("%i\n",c);
         dbg_msg[msg_size] = c;
         msg_size += 1;
         bus_write(0xFF02, 0);
+        printf("DBG: %s size:%d\n", dbg_msg,msg_size);
     }
-    printf("DBG: %s size:%d\n", dbg_msg,msg_size);
 
 }
 
@@ -66,6 +66,8 @@ int start(int argc, char **argv) {
     ui_init();
     while(running){
         running = ui_handle_events();
+        update_dbg_window();
+
     }
 }
 
@@ -76,7 +78,7 @@ uint8_t bus_read(uint16_t addr) {
     }
     else if (addr < 0xA000) {
         //Char/Map Data
-        return 0;
+        return ppu.vram_read(addr);
     }
     else if (addr < 0xC000) {
         //Cartridge RAM
@@ -92,7 +94,7 @@ uint8_t bus_read(uint16_t addr) {
     }
     else if (addr < 0xFEA0) {
         //OAM
-        return 0;
+        return ppu.oam_read(addr);
     }
     else if (addr < 0xFF00) {
         //reserved unusable...
@@ -114,12 +116,14 @@ uint8_t bus_read(uint16_t addr) {
 }
 
 void bus_write(uint16_t addr, uint8_t val) {
+    //printf("Writing to %04X\n\n", addr);
     if (addr < 0x8000) {
         //ROM Data
         cart.cart_write(addr, val);
     }
     else if (addr < 0xA000) {
         //Char/Map Data
+        ppu.vram_write(addr, val);
     }
     else if (addr < 0xC000) {
         //EXT-RAM
@@ -127,6 +131,7 @@ void bus_write(uint16_t addr, uint8_t val) {
     }
     else if (addr < 0xE000) {
         //WRAM
+        printf("wram write: %04X val:%02X\n",addr,val);
         ram.wram_write(addr, val);
     }
     else if (addr < 0xFE00) {
@@ -134,6 +139,8 @@ void bus_write(uint16_t addr, uint8_t val) {
     }
     else if (addr < 0xFEA0) {
         //OAM
+        if(ppu.dma_active) return;
+        ppu.oam_write(addr, val);
     }
     else if (addr < 0xFF00) {
         //unusable reserved
@@ -164,8 +171,16 @@ void get_interrupt(uint8_t val){
 }
 
 void cycles(uint8_t cycle){
-    for(int i = 0; i<(cycle*4); i++){
-        ticks++;
-        tick();
+    for(int i=0; i<cycle; i++) {
+        for (int j = 0; j < 4; j++) {
+            ticks++;
+            tick();
+        }
+        ppu.dma_tick();
     }
+
+}
+
+void dma_start(uint8_t val){
+    ppu.dma_start(val);
 }

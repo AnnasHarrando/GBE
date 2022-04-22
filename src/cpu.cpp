@@ -14,9 +14,8 @@ void cpu::step(){
         cycles(1);
         printf("%04X: %-7s (%02X %02X %02X)\n", cur_pc, inst_name(cur_inst->type), opcode, bus_read(pc),
                bus_read(pc + 1));
-        printf("AF: %02X%02X, BC: %02X%02X, DE: %02X%02X, HL: %02X%02X\n", regs[A], regs[F], regs[B],
-               regs[C], regs[D], regs[E], regs[H], regs[L]);
-
+        printf("AF: %02X%02X, BC: %02X%02X, DE: %02X%02X, HL: %02X%02X SP:%04X\n", regs[A], regs[F], regs[B],
+              regs[C], regs[D], regs[E], regs[H], regs[L],regs[SP]);
         load_in_mem = 0;
         fetch_data();
         exec();
@@ -32,7 +31,7 @@ void cpu::step(){
 
     if(master_enabled) {
         check_interrupt();
-        ime = true;
+        ime = false;
     }
     if(ime) master_enabled = true;
 
@@ -78,7 +77,7 @@ void cpu::fetch_data(){
             }
             break;
         case R_A8:
-            fetch = bus_read( pc);
+            fetch = 0xFF00 | bus_read( pc);
             cycles(1);
             pc++;
             break;
@@ -143,6 +142,7 @@ void cpu::fetch_data(){
             cycles(1);
             regs[SP] += temp;
             fetch = regs[SP];
+            pc++;
         }
         break;
         default:
@@ -193,6 +193,7 @@ void cpu::exec(){
                 }
                 else bus_write(load_in_mem,fetch);
             }
+            else if(opcode == 0xF0) regs[cur_inst->reg_1] = bus_read(fetch);
             else regs[cur_inst->reg_1] = fetch;
             cycles(1);
             if(opcode == 0xF8) set_flags(0,0,(regs[cur_inst->reg_2] & 0xF) + (fetch & 0xF) > 0xF,(regs[cur_inst->reg_2] & 0xFF) + (fetch & 0xFF) > 0xFF);
@@ -229,7 +230,7 @@ void cpu::exec(){
             break;
         case JR:
             if(cond()){
-                 pc += (char)fetch;
+                 pc += (int8_t)(fetch & 0xFF);
                 cycles(1);
             }
             break;
@@ -328,10 +329,15 @@ void cpu::exec(){
             if(cond()){
                 push(pc);
                 pc = fetch;
+                cycles(1);
             }
             break;
         case RET:
-            if(cond()) pc = pop();
+            if(cur_inst->cond != CT_NONE) cycles(1);
+            if(cond()){
+                pc = pop();
+                cycles(1);
+            }
             break;
         case RETI:
             master_enabled = true;
@@ -340,6 +346,7 @@ void cpu::exec(){
         case RST:
             push(pc);
             pc = bus_read(cur_inst->param);
+            cycles(1);
             break;
         case DAA:{
             uint8_t u = 0;
@@ -377,11 +384,12 @@ void cpu::exec(){
     }
 }
 
-void cpu::set_flags(uint8_t z, uint8_t n, uint8_t h, uint8_t c){
+void cpu::set_flags(int z, int n, int h, int c){
     if(z >= 0) BIT_SET(7,z);
     if(n >= 0) BIT_SET(6,n);
     if(h >= 0) BIT_SET(5,h);
     if(c >= 0) BIT_SET(4,c);
+    regs[AF] = (regs[A] << 8) | regs[F];
 }
 
 void cpu::correct_regs(){
@@ -415,9 +423,16 @@ void cpu::set_ie_register(uint8_t val){
     ie_register = val;
 };
 
+void cpu::it_push(uint16_t val){
+    regs[SP]--;
+    bus_write(regs[SP],val >> 8);
+    regs[SP]--;
+    bus_write(regs[SP],val & 0xFF);
+}
+
 void cpu::push(uint16_t val){
     regs[SP]--;
-    bus_write(regs[SP],(val >> 8) & 0xFF);
+    bus_write(regs[SP],val >> 8);
     regs[SP]--;
     bus_write(regs[SP],val & 0xFF);
     cycles(2);
@@ -432,16 +447,27 @@ uint16_t cpu::pop(){
 }
 
 void cpu::check_interrupt(){
-    if (check_int(0x40, 1)){}
-    else if (check_int(0x48, 2)){}
-    else if (check_int(0x50, 4)){}
-    else if (check_int(0x58, 8)){}
-    else if (check_int(0x60, 16)){}
+    if (check_int(0x40, 1)){
+
+    }
+    else if (check_int(0x48, 2)){
+
+    }
+    else if (check_int(0x50, 4)){
+
+    }
+    else if (check_int(0x58, 8)){
+
+    }
+    else if (check_int(0x60, 16)){
+
+    }
 }
 
 bool cpu::check_int(uint16_t addr, uint8_t interrupt){
     if((int_flags & interrupt) && (ie_register & interrupt)){
-        push(pc);
+        printf("interrupted\n");
+        it_push(pc);
         pc = addr;
         int_flags &= ~interrupt;
         halt = false;

@@ -39,7 +39,7 @@ public:
     bool cond();
     void push(uint16_t val);
     uint16_t pop();
-    void set_flags(uint8_t z, uint8_t n, uint8_t h, uint8_t c);
+    void set_flags(int z, int n, int h, int c);
 
     void correct_regs();
 
@@ -54,6 +54,8 @@ public:
     void get_interrupt(uint8_t interrupt);
 
     void cb();
+
+    void it_push(uint16_t val);
 };
 
 
