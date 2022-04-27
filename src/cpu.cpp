@@ -12,10 +12,10 @@ void cpu::step(){
         opcode = bus_read(pc++);
         cur_inst = get_instruction(opcode);
         cycles(1);
-        printf("%04X: %-7s (%02X %02X %02X)\n", cur_pc, inst_name(cur_inst->type), opcode, bus_read(pc),
-               bus_read(pc + 1));
-        printf("AF: %02X%02X, BC: %02X%02X, DE: %02X%02X, HL: %02X%02X SP:%04X\n", regs[A], regs[F], regs[B],
-              regs[C], regs[D], regs[E], regs[H], regs[L],regs[SP]);
+        //printf("%04X: %-7s (%02X %02X %02X)\n", cur_pc, inst_name(cur_inst->type), opcode, bus_read(pc),
+        //      bus_read(pc + 1));
+        //printf("AF: %02X%02X, BC: %02X%02X, DE: %02X%02X, HL: %02X%02X SP:%04X\n", regs[A], regs[F], regs[B],
+        //      regs[C], regs[D], regs[E], regs[H], regs[L],regs[SP]);
         load_in_mem = 0;
         fetch_data();
         exec();
@@ -345,7 +345,7 @@ void cpu::exec(){
             break;
         case RST:
             push(pc);
-            pc = bus_read(cur_inst->param);
+            pc = cur_inst->param;
             cycles(1);
             break;
         case DAA:{

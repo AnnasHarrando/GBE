@@ -13,7 +13,7 @@ void ppu::oam_write(uint16_t addr, uint8_t val){
 
     uint8_t *p = (uint8_t *)oam_ram;
     p[addr] = val;
-    printf("addr: %04X val: %02X\n",addr,val);
+    //printf("addr: %04X val: %02X\n",addr,val);
 }
 
 uint8_t ppu::vram_read(uint16_t addr) {

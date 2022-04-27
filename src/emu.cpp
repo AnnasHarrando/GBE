@@ -131,7 +131,6 @@ void bus_write(uint16_t addr, uint8_t val) {
     }
     else if (addr < 0xE000) {
         //WRAM
-        printf("wram write: %04X val:%02X\n",addr,val);
         ram.wram_write(addr, val);
     }
     else if (addr < 0xFE00) {
