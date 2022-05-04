@@ -81,17 +81,6 @@ typedef enum {
     RST,
     ERR,
 
-    RLC,
-    RRC,
-    RL,
-    RR,
-    SLA,
-    SRA,
-    SWAP,
-    SRL,
-    BIT,
-    RES,
-    SET
 } INST;
 
 typedef enum {

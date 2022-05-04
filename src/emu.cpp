@@ -4,7 +4,7 @@
 #include "ram.h"
 #include "io.h"
 #include "ppu.h"
-#include <iostream>
+#include "bus.h"
 
 using namespace std;
 
@@ -13,6 +13,7 @@ cart cart;
 ram ram;
 io io;
 ppu ppu;
+bus bus;
 bool running = true;
 
 uint8_t ticks = 0;
@@ -71,90 +72,60 @@ int start(int argc, char **argv) {
     }
 }
 
-uint8_t bus_read(uint16_t addr) {
-    if (addr < 0x8000) {
-        //ROM Data
-        return cart.cart_read(addr);
+uint8_t emu_read(uint16_t addr, component comp) {
+    switch(comp){
+        case WRAM: return ram.wram_read(addr);
+        case HRAM: return ram.hram_read(addr);
+        case CART: return cart.read(addr);
+        case IO: return io.read(addr);
+        case OAM: return ppu.oam_read(addr);
+        case VRAM: return ppu.vram_read(addr);
+        default: break;
     }
-    else if (addr < 0xA000) {
-        //Char/Map Data
-        return ppu.vram_read(addr);
-    }
-    else if (addr < 0xC000) {
-        //Cartridge RAM
-        return cart.cart_read(addr);
-    }
-    else if (addr < 0xE000) {
-        //WRAM (Working RAM)
-        return ram.wram_read(addr);
-    }
-    else if (addr < 0xFE00) {
-        //reserved echo ram...
-        return 0;
-    }
-    else if (addr < 0xFEA0) {
-        //OAM
-        return ppu.oam_read(addr);
-    }
-    else if (addr < 0xFF00) {
-        //reserved unusable...
-        return 0;
-    }
-    else if (addr < 0xFF80) {
-        //IO Registers...
-        return io.io_read(addr);
-    }
-    else if(addr < 0xFFFF){
-        return ram.hram_read(addr);
-    }
-    else if(addr == 0xFFFF){
-        //  return
-        return cpu.get_ie_register();
-    }
-    printf("No bus addr %04X", addr);
-    exit(-5);
 }
 
-void bus_write(uint16_t addr, uint8_t val) {
-    //printf("Writing to %04X\n\n", addr);
-    if (addr < 0x8000) {
-        //ROM Data
-        cart.cart_write(addr, val);
+void emu_write(uint16_t addr, uint8_t val, component comp) {
+    switch(comp){
+        case WRAM: ram.wram_write(addr,val); break;
+        case HRAM: ram.hram_write(addr,val); break;
+        case CART: cart.write(addr,val); break;
+        case IO: io.write(addr,val); break;
+        case OAM: ppu.oam_write(addr,val); break;
+        case VRAM: ppu.vram_write(addr,val); break;
+        default: break;
     }
-    else if (addr < 0xA000) {
-        //Char/Map Data
-        ppu.vram_write(addr, val);
+}
+
+void cycles(uint8_t cycle){
+    for(int i=0; i<cycle; i++) {
+        for (int j = 0; j < 4; j++) {
+            ticks++;
+            tick();
+            ppu.tick();
+        }
+        ppu.dma_tick();
     }
-    else if (addr < 0xC000) {
-        //EXT-RAM
-        cart.cart_write(addr, val);
-    }
-    else if (addr < 0xE000) {
-        //WRAM
-        ram.wram_write(addr, val);
-    }
-    else if (addr < 0xFE00) {
-        //reserved echo ram
-    }
-    else if (addr < 0xFEA0) {
-        //OAM
-        if(ppu.dma_active) return;
-        ppu.oam_write(addr, val);
-    }
-    else if (addr < 0xFF00) {
-        //unusable reserved
-    }
-    else if (addr < 0xFF80) {
-        //IO Registers...
-        io.io_write(addr,val);
-    }
-    else if (addr < 0xFFFF) {
-        ram.hram_write(addr, val);
-    }
-    else if(addr == 0xFFFF){
-        //CPU SET ENABLE REGISTER
-        cpu.set_ie_register(val);
-    }
+
+}
+
+uint8_t bus_read(uint16_t addr){
+    return bus.read(addr);
+}
+
+void bus_write(uint16_t addr, uint8_t val){
+    bus.write(addr,val);
+};
+
+bool dma_active(){
+    return ppu.dma_active;
+}
+
+void set_ie_register(uint8_t val){
+    cpu.set_ie_register(val);
+}
+
+uint8_t get_ie_register(){
+    return cpu.get_ie_register();
 }
 
 uint8_t get_int_flags(){
@@ -167,17 +138,6 @@ void set_int_flags(uint8_t val){
 
 void get_interrupt(uint8_t val){
     cpu.get_interrupt(val);
-}
-
-void cycles(uint8_t cycle){
-    for(int i=0; i<cycle; i++) {
-        for (int j = 0; j < 4; j++) {
-            ticks++;
-            tick();
-        }
-        ppu.dma_tick();
-    }
-
 }
 
 void dma_start(uint8_t val){
