@@ -21,6 +21,17 @@ void ui_init(){
 
     SDL_CreateWindowAndRenderer(1024,768,0,&window,&renderer);
 
+    surface = SDL_CreateRGBSurface(0, 1024, 768, 32,
+                                  0x00FF0000,
+                                  0x0000FF00,
+                                  0x000000FF,
+                                  0xFF000000);
+
+    texture = SDL_CreateTexture(renderer,
+                                   SDL_PIXELFORMAT_ARGB8888,
+                                   SDL_TEXTUREACCESS_STREAMING,
+                                1024, 768);
+
     SDL_CreateWindowAndRenderer(16 * 8 * scale, 32 * 8 * scale, 0,
                                 &sdlDebugWindow, &sdlDebugRenderer);
 
@@ -44,7 +55,7 @@ void ui_init(){
 
 static unsigned long tile_colors[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
 
-void display_tile(SDL_Surface *surface, uint16_t startLocation, uint16_t tileNum, int x, int y) {
+void display_tile(SDL_Surface *screen, uint16_t startLocation, uint16_t tileNum, int x, int y) {
     SDL_Rect rc;
 
     for (int tileY=0; tileY<16; tileY += 2) {
@@ -62,9 +73,31 @@ void display_tile(SDL_Surface *surface, uint16_t startLocation, uint16_t tileNum
             rc.w = scale;
             rc.h = scale;
 
-            SDL_FillRect(surface, &rc, tile_colors[color]);
+            SDL_FillRect(screen, &rc, tile_colors[color]);
         }
     }
+}
+
+void update_screen(uint32_t *buffer){
+    SDL_Rect rc;
+    rc.x = rc.y = 0;
+    rc.w = rc.h = 2048;
+
+    for (int line_num = 0; line_num < 144; line_num++) {
+        for (int x = 0; x < 160; x++) {
+            rc.x = x * scale;
+            rc.y = line_num * scale;
+            rc.w = scale;
+            rc.h = scale;
+
+            SDL_FillRect(surface, &rc, buffer[x + (line_num * 160)]);
+        }
+    }
+
+    SDL_UpdateTexture(texture, NULL, surface->pixels, surface->pitch);
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
 }
 
 void update_dbg_window() {

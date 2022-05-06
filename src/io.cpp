@@ -20,7 +20,6 @@ void io::write(uint16_t addr, uint8_t val) {
     if((addr >= 0xFF40) && (addr <= 0xFF4B)) lcd_write(addr,val);
     if(addr == 0xFF46) {
         dma_start(val);
-        printf("DMA START! val:%02X\n",val);
     }
 
 }

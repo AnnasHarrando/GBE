@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include "lcd.h"
+#include <cstdlib>
 
 typedef struct{
     uint8_t y;
@@ -31,7 +32,7 @@ public:
 
     uint32_t cur_frame = 0;
     uint32_t dots = 0;
-    uint32_t *buffer;
+    uint32_t *buffer = static_cast<uint32_t *>(malloc(144 * 160 * sizeof(uint32_t)));
 
     void tick();
 
@@ -45,11 +46,8 @@ public:
     void dma_tick();
 
     void oam_mode();
-
     void draw_mode();
-
     void vblank_mode();
-
     void hblank_mode();
 
     void inc_ly();

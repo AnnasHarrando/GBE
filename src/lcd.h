@@ -4,12 +4,12 @@
 
 typedef struct{
     uint8_t lcdc = 0x91;
-    uint8_t stat;
+    uint8_t stat = 0b10;
     uint8_t x_scroll = 0;
     uint8_t y_scroll = 0;
     uint8_t ly = 0;
     uint8_t lyc = 0;
-    uint8_t oam = 0;
+    uint8_t oam;
     uint8_t bg_palette = 0xFC;
     uint8_t palette_1 = 0xFF;
     uint8_t palette_2 = 0xFF;
@@ -24,10 +24,10 @@ typedef struct{
 lcd * get_lcd();
 
 typedef enum {
-    MODE_HBLANK,
-    MODE_VBLANK,
-    MODE_OAM,
-    MODE_DRAW
+    MODE_HBLANK = 0,
+    MODE_VBLANK = 1,
+    MODE_OAM = 2,
+    MODE_DRAW = 3
 } lcd_mode;
 
 typedef enum {
@@ -41,12 +41,10 @@ uint8_t lcd_read(uint16_t address);
 void lcd_write(uint16_t address, uint8_t value);
 void update_palette(uint8_t val, uint8_t palette);
 void lcds_set(uint8_t val);
-void lcd_inc_ly();
-bool ly_compare();
-void set_ly(uint8_t val);
-void set_lyc(uint8_t val);
 bool stat_int(stat_mode mode);
-uint8_t get_ly();
+bool BGW_enabled();
+uint16_t BGW_data_loc();
+uint16_t BG_map_loc();
 lcd_mode get_mode();
 
 #endif

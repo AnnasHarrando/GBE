@@ -5,6 +5,7 @@
 #include "io.h"
 #include "ppu.h"
 #include "bus.h"
+#include "ppu_fifo.h"
 
 using namespace std;
 
@@ -43,9 +44,14 @@ DWORD WINAPI cpu_run(LPVOID lpParameter)
     }
 }
 
+void fifo_init(){
+    init(ppu);
+}
+
 int start(int argc, char **argv) {
     cart.cart_load(argv[1]);
     init();
+    fifo_init();
     ticks = 0;
 
     HANDLE hThread = CreateThread(
@@ -67,6 +73,7 @@ int start(int argc, char **argv) {
     ui_init();
     while(running){
         running = ui_handle_events();
+        update_screen(ppu.buffer);
         update_dbg_window();
 
     }

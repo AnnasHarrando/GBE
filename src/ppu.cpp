@@ -1,5 +1,7 @@
 #include "ppu.h"
 #include "emu.h"
+#include "ppu_fifo.h"
+
 
 
 uint8_t ppu::oam_read(uint16_t addr) {
@@ -49,7 +51,7 @@ void ppu::dma_tick(){
 
 void ppu::tick() {
     dots++;
-
+    //printf("%i\n",get_mode());
     switch(get_mode()) {
         case MODE_OAM:
             oam_mode();
@@ -79,21 +81,26 @@ void ppu::inc_ly(){
     LCD->ly++;
 
     if(LCD->ly == LCD->lyc){
-        LCD->lyc = 1;
+        LCD->stat |= (1 << 2);
         if(stat_int(STAT_LYC)) get_interrupt(LCD_STAT);
     }
-    else LCD->lyc = 0;
+    else LCD->stat &= ~(1 << 2);
 }
 
 void ppu::oam_mode(){
     if(dots >= 80){
         lcds_set(MODE_DRAW);
+        fifo_set_draw();
     }
 }
 
 void ppu::draw_mode(){
-    if(dots >= 252){
+    fifo_proc();
+    if(drawing_stopped()){
+        fifo_reset();
         lcds_set(MODE_HBLANK);
+
+        if(stat_int(STAT_HBLANK)) get_interrupt(LCD_STAT);
     }
 }
 
@@ -141,6 +148,8 @@ void ppu::hblank_mode(){
         dots = 0;
     }
 }
+
+
 
 
 

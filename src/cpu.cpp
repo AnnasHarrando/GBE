@@ -466,7 +466,6 @@ void cpu::check_interrupt(){
 
 bool cpu::check_int(uint16_t addr, uint8_t interrupt){
     if((int_flags & interrupt) && (ie_register & interrupt)){
-        printf("interrupted\n");
         it_push(pc);
         pc = addr;
         int_flags &= ~interrupt;
