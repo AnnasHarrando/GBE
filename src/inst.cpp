@@ -248,7 +248,7 @@ void init(){
     instructions[0xDE] =  {SBC,D8};
     instructions[0xDF] =  {RST, IMP, R_NONE, R_NONE, CT_NONE, 0x0018};
 
-    instructions[0xE0] =  {LD,A8_R,A};
+    instructions[0xE0] =  {LDH,A8_R,A};
     instructions[0xE1] =  {POP,IMP,HL};
     instructions[0xE2] =  {LD,MR_R,C,A};
 
@@ -262,7 +262,7 @@ void init(){
     instructions[0xEE] =  {XOR,D8};
     instructions[0xEF] =  {RST, IMP, R_NONE, R_NONE, CT_NONE, 0x0028};
 
-    instructions[0xF0] =  {LD,R_A8,A};
+    instructions[0xF0] =  {LDH,R_A8,A};
     instructions[0xF1] =  {POP,IMP,AF};
     instructions[0xF2] =  {LD,R_MR,A,C};
     instructions[0xF3] =  {DI};

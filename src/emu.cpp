@@ -71,7 +71,7 @@ int start(int argc, char **argv) {
     }
 
     ui_init();
-    while(running){
+    while(true){
         running = ui_handle_events();
         update_screen(ppu.buffer);
         update_dbg_window();

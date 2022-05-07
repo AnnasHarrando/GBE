@@ -1,10 +1,24 @@
 #include "cpu.h"
 #include <iostream>
 #include <cstdlib>
+#include <vector>
 
 using namespace std;
 
+static vector<uint8_t> opcodelist;
+static uint16_t temp = 0;
+static uint16_t temp2 = 0;
+
+
 void cpu::step(){
+    while(opcodelist.size() < 3) opcodelist.push_back(0);
+
+    if((opcodelist.at(1) == 0xD5) && (opcodelist.at(2) == 0xF1)){
+        if(temp % 256 == 0) {printf("succes %i A:%i\n",temp2,regs[E]); temp2++;}
+        temp++;
+    }
+
+
     if(!halt) {
         uint16_t cur_pc = pc;
         saved_regs = regs;
@@ -12,6 +26,9 @@ void cpu::step(){
         opcode = bus_read(pc++);
         cur_inst = get_instruction(opcode);
         cycles(1);
+
+        opcodelist.push_back(opcode);
+        opcodelist.erase(opcodelist.begin());
         //printf("%04X: %-7s (%02X %02X %02X)\n", cur_pc, inst_name(cur_inst->type), opcode, bus_read(pc),
         //      bus_read(pc + 1));
         //printf("AF: %02X%02X, BC: %02X%02X, DE: %02X%02X, HL: %02X%02X SP:%04X\n", regs[A], regs[F], regs[B],
@@ -77,7 +94,7 @@ void cpu::fetch_data(){
             }
             break;
         case R_A8:
-            fetch = 0xFF00 | bus_read( pc);
+            fetch = bus_read( pc);
             cycles(1);
             pc++;
             break;
@@ -85,7 +102,6 @@ void cpu::fetch_data(){
             load_in_mem = bus_read( pc) | 0xFF00;
             cycles(1);
             pc++;
-            fetch = regs[cur_inst->reg_1];
             break;
         case R_A16:{
             uint16_t low = bus_read( pc);
@@ -193,10 +209,14 @@ void cpu::exec(){
                 }
                 else bus_write(load_in_mem,fetch);
             }
-            else if(opcode == 0xF0) regs[cur_inst->reg_1] = bus_read(fetch);
             else regs[cur_inst->reg_1] = fetch;
             cycles(1);
             if(opcode == 0xF8) set_flags(0,0,(regs[cur_inst->reg_2] & 0xF) + (fetch & 0xF) > 0xF,(regs[cur_inst->reg_2] & 0xFF) + (fetch & 0xFF) > 0xFF);
+            break;
+        case LDH:
+            if(load_in_mem != 0) bus_write(load_in_mem,regs[A]);
+            else regs[A] = bus_read(0xFF00 | fetch);
+            cycles(1);
             break;
         case DEC:
             if(opcode == 0x35) {
@@ -260,6 +280,26 @@ void cpu::exec(){
         }
             break;
         case ADD:
+            if(opcode == 0xE8){
+                signed char temp = (signed char) fetch;
+                cycles(1);
+                regs[SP] += temp;
+                set_flags(0, 0, (regs[SP] & 0xF) + (fetch & 0xF) > 0xF,
+                          (int)(regs[SP] & 0xFF) + (int)(fetch & 0xFF) > 0xFF);
+            }
+            else if(cur_inst->reg_1 != A){
+                regs[cur_inst->reg_1] += fetch;
+                cycles(1);
+                set_flags(-1, 0, (regs[cur_inst->reg_1] & 0xFFF) + (fetch & 0xFFF) > 0xFFF,
+                          (uint32_t) regs[cur_inst->reg_1] + (uint32_t) fetch > 0xFFFF);
+            }
+            else{
+                regs[cur_inst->reg_1] += fetch;
+                regs[cur_inst->reg_1] &= 0xFF;
+                set_flags(regs[cur_inst->reg_1] == 0,0,(regs[cur_inst->reg_1] & 0xF) + (fetch & 0xF) > 0xF,(int)regs[cur_inst->reg_1] + (int)fetch > 0xFF);
+            }
+
+            /*
             switch (opcode & 0xF0) {
                 case 0x80:
                 case 0xC0:
@@ -281,6 +321,7 @@ void cpu::exec(){
                               (uint32_t) regs[cur_inst->reg_1] + (uint32_t) fetch > 0xFFFF);
             }
             cycles(1);
+             */
             break;
         case ADC:{
             uint16_t a = regs[A];
@@ -349,8 +390,9 @@ void cpu::exec(){
             cycles(1);
             break;
         case DAA:{
-            uint8_t u = 0;
+            int u = 0;
             int fc = 0;
+
             if(((regs[F] >> 5) & 0x1) || (!((regs[F] >> 6) & 0x1) && ((regs[A] & 0xF) > 9))) u = 6;
             if(((regs[F] >> 4) & 0x1) || (!((regs[F] >> 6) & 0x1) && regs[A] > 99)){
                 u |= 0x60;
@@ -358,7 +400,8 @@ void cpu::exec(){
             }
             if((regs[F] >> 6) & 0x1) regs[A] += -u;
             else regs[A] += u;
-            set_flags(regs[A] == 0, -1, 0, fc);
+
+            set_flags(regs[A] == 0, -1, 0, -1);
         }
         break;
         case CPL:
@@ -394,26 +437,40 @@ void cpu::set_flags(int z, int n, int h, int c){
 
 void cpu::correct_regs(){
     if(regs[A] != saved_regs[A] || regs[F] != saved_regs[F]) regs[AF] = regs[A] << 8 | regs[F];
-    if(regs[B] != saved_regs[B] || regs[C] != saved_regs[C]) regs[BC] = regs[B] << 8 | regs[C];
-    if(regs[D] != saved_regs[D] || regs[E] != saved_regs[E]) regs[DE] = regs[D] << 8 | regs[E];
-    if(regs[H] != saved_regs[H] || regs[L] != saved_regs[L]) regs[HL] = regs[H] << 8 | regs[L];
+    if(regs[B] != saved_regs[B] || regs[C] != saved_regs[C]) {
+        regs[BC] = regs[B] << 8 | regs[C];
+
+    }
+    if(regs[D] != saved_regs[D] || regs[E] != saved_regs[E]) {
+        regs[DE] = regs[D] << 8 | regs[E];
+
+    }
+    if(regs[H] != saved_regs[H] || regs[L] != saved_regs[L]) {
+        regs[HL] = regs[H] << 8 | regs[L];
+
+    }
 
     if(regs[BC] != saved_regs[BC]){
         regs[B] = regs[BC] >> 8;
         regs[C] = regs[BC] & 0x00FF;
+
     }
     else if(regs[DE] != saved_regs[DE]){
         regs[D] = regs[DE] >> 8;
         regs[E] = regs[DE] & 0x00FF;
+
     }
     else if(regs[HL] != saved_regs[HL]){
         regs[H] = regs[HL] >> 8;
         regs[L] = regs[HL] & 0x00FF;
+
     }
     else if(regs[AF] != saved_regs[AF]){
         regs[A] = regs[AF] >> 8;
         regs[F] = regs[AF] & 0x00FF;
     }
+
+
 }
 
 uint8_t cpu::get_ie_register(){
