@@ -9,9 +9,9 @@ void ram::wram_write(uint16_t addr, uint8_t val){
 }
 
 uint8_t ram::hram_read(uint16_t addr){
-    return hram[addr - 0xC000];
+    return hram[addr - 0xFF80];
 }
 
 void ram::hram_write(uint16_t addr, uint8_t val){
-    hram[addr - 0xC000] = val;
+    hram[addr - 0xFF80] = val;
 }

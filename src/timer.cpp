@@ -1,9 +1,9 @@
 #include "timer.h"
 
-uint16_t Div = 0xAC00;
-uint8_t tima = 0;
-uint8_t tma = 0;
-uint8_t tac = 0;
+static uint16_t Div = 0xAC00;
+static uint8_t tima;
+static uint8_t tma;
+static uint8_t tac;
 
 void tick() {
     uint16_t prev_div = Div;

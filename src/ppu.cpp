@@ -25,6 +25,10 @@ uint8_t ppu::vram_read(uint16_t addr) {
 
 void ppu::vram_write(uint16_t addr, uint8_t val) {
     vram[addr - 0x8000] = val;
+    if(addr >= 0x9800) {
+        //printf("vram\n");
+        //SDL_Delay(5000);
+    }
 }
 
 void ppu::dma_start(uint8_t val){

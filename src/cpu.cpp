@@ -5,38 +5,42 @@
 
 using namespace std;
 
+
 static vector<uint8_t> opcodelist;
 static uint16_t temp = 0;
 static uint16_t temp2 = 0;
 
 
 void cpu::step(){
-    while(opcodelist.size() < 3) opcodelist.push_back(0);
 
+    while(opcodelist.size() < 3) opcodelist.push_back(0);
+/*
     if((opcodelist.at(1) == 0xD5) && (opcodelist.at(2) == 0xF1)){
         if(temp % 256 == 0) {printf("succes %i A:%i\n",temp2,regs[E]); temp2++;}
         temp++;
     }
+     */
 
 
     if(!halt) {
         uint16_t cur_pc = pc;
-        saved_regs = regs;
+        //saved_regs = regs;
 
         opcode = bus_read(pc++);
         cur_inst = get_instruction(opcode);
         cycles(1);
 
-        opcodelist.push_back(opcode);
-        opcodelist.erase(opcodelist.begin());
-        //printf("%04X: %-7s (%02X %02X %02X)\n", cur_pc, inst_name(cur_inst->type), opcode, bus_read(pc),
-        //      bus_read(pc + 1));
-        //printf("AF: %02X%02X, BC: %02X%02X, DE: %02X%02X, HL: %02X%02X SP:%04X\n", regs[A], regs[F], regs[B],
-        //      regs[C], regs[D], regs[E], regs[H], regs[L],regs[SP]);
+        //opcodelist.push_back(opcode);
+        //opcodelist.erase(opcodelist.begin());
+        //if((opcodelist.at(1) == 0x07) || (opcodelist.at(2) == 0x07)) {
+
+            //printf("%04X: %-7s (%02X %02X %02X)\n", cur_pc, inst_name(cur_inst->type), opcode, bus_read(pc),
+            //       bus_read(pc + 1));
+            //printf("AF: %04X, BC: %04X, DE: %04X, HL: %04X SP:%04X\n", get_register(AF),get_register(BC),get_register(DE),get_register(HL),get_register(SP));
+        //}
         load_in_mem = 0;
         fetch_data();
         exec();
-        correct_regs();
     }
     else{
         cycles(1);
@@ -45,7 +49,6 @@ void cpu::step(){
             halt = false;
         }
     }
-
     if(master_enabled) {
         check_interrupt();
         ime = false;
@@ -59,10 +62,10 @@ void cpu::fetch_data(){
         case IMP:
             break;
         case R:
-            fetch = regs[cur_inst->reg_1];
+            fetch = get_register(cur_inst->reg_1);
             break;
         case R_R:
-            fetch = regs[cur_inst->reg_2];
+            fetch = get_register(cur_inst->reg_2);
             break;
         case R_D8:
         case D8:
@@ -81,7 +84,6 @@ void cpu::fetch_data(){
             fetch = low | (high << 8);
         }
             break;
-        case D16_R:
         case A16_R: {
             uint16_t low = bus_read( pc);
             cycles(1);
@@ -90,8 +92,8 @@ void cpu::fetch_data(){
             cycles(1);
             pc++;
             load_in_mem = low | (high << 8);
-            fetch = regs[cur_inst->reg_1];
-            }
+            fetch = get_register(cur_inst->reg_1);
+        }
             break;
         case R_A8:
             fetch = bus_read( pc);
@@ -106,61 +108,59 @@ void cpu::fetch_data(){
         case R_A16:{
             uint16_t low = bus_read( pc);
             cycles(1);
-             pc++;
+            pc++;
             uint16_t high = bus_read( pc);
             cycles(1);
-             pc++;
+            pc++;
             fetch = bus_read(low | (high << 8));
             cycles(1);
         } break;
         case MR:
-            load_in_mem = regs[cur_inst->reg_1];
+            load_in_mem = get_register(cur_inst->reg_1);
             cycles(1);
             break;
         case R_MR:
-            if(cur_inst->reg_2 == C) fetch = bus_read(regs[cur_inst->reg_2] |= 0xFF00);
-            else fetch = bus_read(regs[cur_inst->reg_2]);
+            if(cur_inst->reg_2 == C) fetch = bus_read(get_register(cur_inst->reg_2) | 0xFF00);
+            else fetch = bus_read(get_register(cur_inst->reg_2));
             cycles(1);
             break;
         case MR_R:
-            load_in_mem = regs[cur_inst->reg_1];
+            load_in_mem = get_register(cur_inst->reg_1);
             if(cur_inst->reg_1 == C) load_in_mem |= 0xFF00;
-            fetch = regs[cur_inst->reg_2];
+            fetch = get_register(cur_inst->reg_2);
             break;
         case MR_D8:
-            load_in_mem = regs[cur_inst->reg_1];
+            load_in_mem = get_register(cur_inst->reg_1);
             fetch = bus_read( pc);
             cycles(1);
             pc++;
             break;
         case HLD_R:
-            load_in_mem = regs[HL];
-            fetch = regs[A];
-            regs[HL]--;
+            load_in_mem = regists.hl;
+            fetch = regists.a;
+            set_register(HL, get_register(HL) - 1);
             break;
         case HLI_R:
-            load_in_mem = regs[HL];
-            fetch = regs[A];
-            regs[HL]++;
+            load_in_mem = regists.hl;
+            fetch = regists.a;
+            set_register(HL, get_register(HL) + 1);
             break;
         case R_HLI:
-            fetch = bus_read(regs[HL]);
+            fetch = bus_read(regists.hl);
             cycles(1);
-            regs[HL]++;
+            regists.hl++;
             break;
         case R_HLD:
-            fetch = bus_read(regs[HL]);
+            fetch = bus_read(regists.hl);
             cycles(1);
-            regs[HL]--;
+            regists.hl--;
             break;
         case HL_SPR:{
-            signed char temp = (signed char) bus_read( pc);
+            fetch = bus_read( pc);
             cycles(1);
-            regs[SP] += temp;
-            fetch = regs[SP];
             pc++;
         }
-        break;
+            break;
         default:
             printf("Unknown Addressing Mode! %d (%02X)\n", cur_inst->mode, opcode);
             exit(-7);
@@ -170,8 +170,8 @@ void cpu::fetch_data(){
 
 
 bool cpu::cond(){
-    bool z = ((regs[F])>>(7)) & 1;
-    bool c = ((regs[F])>>(4)) & 1;
+    bool z = (regists.f >> 7) & 1;
+    bool c = (regists.f >> 4) & 1;
 
     switch(cur_inst->cond) {
         case  CT_NONE: return true;
@@ -197,160 +197,165 @@ void cpu::exec(){
             }
             break;
         case XOR:
-            regs[A] ^= (fetch & 0xFF);
-            set_flags(regs[A] == 0,0,0,0);
+            regists.a ^= fetch;
+            set_flags(regists.a == 0,0,0,0);
             break;
         case LD:
-            if(load_in_mem != 0){
-                if(opcode == 0x08){
-                    bus_write(load_in_mem,regs[SP] & 0xFF);
-                    bus_write(load_in_mem+1,regs[SP] >> 8);
+            if(opcode == 0xF8) {
+                regists.hl = regists.sp + (signed char)fetch;
+                cycles(1);
+                set_flags(0,0,(get_register(SP) & 0xF) + (fetch & 0xF) > 0xF,(get_register(SP) & 0xFF) + (fetch & 0xFF) > 0xFF);
+            }
+            else{
+                if(load_in_mem != 0){
+                    if(opcode == 0x08){
+                        bus_write(load_in_mem,regists.sp & 0xFF);
+                        bus_write(load_in_mem+1,regists.sp >> 8);
+                        cycles(1);
+                    }
+                    else bus_write(load_in_mem,fetch);
                     cycles(1);
                 }
-                else bus_write(load_in_mem,fetch);
+                else set_register(cur_inst->reg_1, fetch);
+
+                if(cur_inst->mode == R_R && cur_inst->reg_2 >= AF) cycles(1);
             }
-            else regs[cur_inst->reg_1] = fetch;
-            cycles(1);
-            if(opcode == 0xF8) set_flags(0,0,(regs[cur_inst->reg_2] & 0xF) + (fetch & 0xF) > 0xF,(regs[cur_inst->reg_2] & 0xFF) + (fetch & 0xFF) > 0xFF);
             break;
         case LDH:
-            if(load_in_mem != 0) bus_write(load_in_mem,regs[A]);
-            else regs[A] = bus_read(0xFF00 | fetch);
+            if(load_in_mem != 0) bus_write(load_in_mem,regists.a);
+            else regists.a = bus_read(0xFF00 | fetch);
             cycles(1);
             break;
         case DEC:
             if(opcode == 0x35) {
                 bus_write(load_in_mem, bus_read(load_in_mem)-1);
+                cycles(1);
                 set_flags(bus_read(load_in_mem) == 0,1,(bus_read(load_in_mem) & 0xF) == 0xF,-1);
             }
             else {
-                if(cur_inst->reg_1 < AF) regs[cur_inst->reg_1] = (regs[cur_inst->reg_1] - 1) & 0xFF;
-                else {
-                    regs[cur_inst->reg_1] = (regs[cur_inst->reg_1] - 1);
-                    cycles(1);
-                }
-                if ((opcode & 0xB) != 0xB) set_flags(regs[cur_inst->reg_1] == 0,1,(regs[cur_inst->reg_1] & 0xF) == 0xF,-1);
+                set_register(cur_inst->reg_1, get_register(cur_inst->reg_1) - 1);
+                if(cur_inst->reg_1 >= AF) cycles(1);
+                else set_flags(get_register(cur_inst->reg_1) == 0,1,(get_register(cur_inst->reg_1) & 0xF) == 0xF,-1);
             }
-            cycles(1);
             break;
         case INC:
             if(opcode == 0x34) {
                 bus_write(load_in_mem, bus_read(load_in_mem)+1);
-                set_flags(bus_read(load_in_mem)-1 == 0,0,(bus_read(load_in_mem) & 0xF) == 0xF,-1);
+                cycles(1);
+                set_flags(bus_read(load_in_mem) == 0,0,(bus_read(load_in_mem) & 0xF) == 0,-1);
             }
             else {
-                if(cur_inst->reg_1 < AF) regs[cur_inst->reg_1] = (regs[cur_inst->reg_1] + 1) & 0xFF;
-                else {
-                    regs[cur_inst->reg_1] = (regs[cur_inst->reg_1] + 1);
-                    cycles(1);
-                }
-                if ((opcode & 0x03) != 0x03) set_flags(regs[cur_inst->reg_1] == 0,0,(regs[cur_inst->reg_1] & 0xF) == 0xF,-1);
+                set_register(cur_inst->reg_1, get_register(cur_inst->reg_1) + 1);
+                if(cur_inst->reg_1 >= AF) cycles(1);
+                else set_flags(get_register(cur_inst->reg_1) == 0,0,(get_register(cur_inst->reg_1) & 0xF) == 0,-1);
             }
-            cycles(1);
             break;
         case JR:
             if(cond()){
-                 pc += (int8_t)(fetch & 0xFF);
+                pc += (int8_t)(fetch & 0xFF);
                 cycles(1);
             }
             break;
         case RRCA: {
-            uint8_t temp = regs[A] & 0x1;
-            regs[A] = (regs[A] >> 1) || (temp << 7);
+            uint8_t temp = regists.a & 0x1;
+            regists.a = (regists.a >> 1) | (temp << 7);
             set_flags(0, 0, 0, temp);
         }
             break;
         case RRA: {
-            uint8_t temp = regs[A] & 0x1;
-            regs[A] = (regs[A] >> 1) | ((((regs[F] >> 4) & 0x1) << 7) & 0xFF);
+            uint8_t temp = regists.a & 0x1;
+            regists.a = (regists.a >> 1) | ((((regists.f >> 4) & 0x1) << 7) & 0xFF);
             set_flags(0, 0, 0, temp);
         }
             break;
         case AND:
-            regs[A] &= fetch;
-            set_flags(regs[A] == 0, 0, 1, 0);
+            regists.a &= fetch;
+            set_flags(regists.a == 0, 0, 1, 0);
             break;
         case OR:
-            regs[A] |= (fetch & 0xFF);
-            set_flags(regs[A] == 0,0,0,0);
+            regists.a |= (fetch & 0xFF);
+            set_flags(regists.a == 0,0,0,0);
             break;
         case CP: {
-            int temp = (int) regs[A] - (int) fetch;
-            set_flags(temp == 0, 1, ((int) regs[A] & 0xF) - ((int) fetch & 0xF) < 0, temp < 0);
+            int temp = (int) regists.a - (int) fetch;
+            set_flags(temp == 0, 1, ((int) regists.a & 0xF) - ((int) fetch & 0xF) < 0, temp < 0);
         }
             break;
         case ADD:
             if(opcode == 0xE8){
+                set_flags(0, 0, (regists.sp & 0xF) + (fetch & 0xF) > 0xF,
+                          (int)(regists.sp & 0xFF) + (int)(fetch & 0xFF) > 0xFF);
                 signed char temp = (signed char) fetch;
                 cycles(1);
-                regs[SP] += temp;
-                set_flags(0, 0, (regs[SP] & 0xF) + (fetch & 0xF) > 0xF,
-                          (int)(regs[SP] & 0xFF) + (int)(fetch & 0xFF) > 0xFF);
+                regists.sp += temp;
             }
-            else if(cur_inst->reg_1 != A){
-                regs[cur_inst->reg_1] += fetch;
-                cycles(1);
-                set_flags(-1, 0, (regs[cur_inst->reg_1] & 0xFFF) + (fetch & 0xFFF) > 0xFFF,
-                          (uint32_t) regs[cur_inst->reg_1] + (uint32_t) fetch > 0xFFFF);
-            }
-            else{
-                regs[cur_inst->reg_1] += fetch;
-                regs[cur_inst->reg_1] &= 0xFF;
-                set_flags(regs[cur_inst->reg_1] == 0,0,(regs[cur_inst->reg_1] & 0xF) + (fetch & 0xF) > 0xF,(int)regs[cur_inst->reg_1] + (int)fetch > 0xFF);
+            else {
+                if (cur_inst->reg_1 == HL) {
+                    set_flags(-1, 0, (get_register(HL) & 0xFFF) + (fetch & 0xFFF) > 0xFFF,
+                              (uint32_t) get_register(HL) + (uint32_t) fetch > 0xFFFF);
+                    set_register(HL, get_register(HL) + fetch);
+                    cycles(1);
+                } else {
+                    uint8_t temp = get_register(A);
+                    set_register(A, get_register(A) + fetch);
+                    set_flags(get_register(A) == 0,0,(temp & 0xF) + (fetch & 0xF) > 0xF,temp + fetch > 0xFF);
+                }
             }
 
-            /*
+/*
             switch (opcode & 0xF0) {
                 case 0x80:
                 case 0xC0:
-                    regs[cur_inst->reg_1] = (uint8_t)regs[cur_inst->reg_1] + (uint8_t)fetch;
-                    set_flags(regs[cur_inst->reg_1] == 0,0,(regs[cur_inst->reg_1] & 0xF) + (fetch & 0xF) > 0xF,(int)regs[cur_inst->reg_1] + (int)fetch > 0xFF);
+                    set_register(cur_inst->reg_1, get_register(cur_inst->reg_1) + fetch);
+                    set_flags(get_register(cur_inst->reg_1) == 0,0,(get_register(cur_inst->reg_1) & 0xF) + (fetch & 0xF) > 0xF,get_register(cur_inst->reg_1) + fetch > 0xFF);
                     break;
                 case 0xE0: {
                     signed char temp = (signed char) fetch;
                     cycles(1);
-                    regs[SP] += temp;
-                    set_flags(0, 0, (regs[cur_inst->reg_1] & 0xF) + (fetch & 0xF) > 0xF,
-                              (int)(regs[cur_inst->reg_1] & 0xFF) + (int)(fetch & 0xFF) > 0xFF);
+                    regists.sp += temp;
+                    set_flags(0, 0, (regists.sp & 0xF) + (fetch & 0xF) > 0xF,
+                              (int)(regists.sp & 0xFF) + (int)(fetch & 0xFF) > 0xFF);
                 }
                     break;
                 default:
-                    regs[cur_inst->reg_1] += fetch;
+                    set_register(cur_inst->reg_1, get_register(cur_inst->reg_1) + fetch);
                     cycles(1);
-                    set_flags(-1, 0, (regs[cur_inst->reg_1] & 0xFFF) + (fetch & 0xFFF) > 0xFFF,
-                              (uint32_t) regs[cur_inst->reg_1] + (uint32_t) fetch > 0xFFFF);
+                    set_flags(-1, 0, (get_register(cur_inst->reg_1) & 0xFFF) + (fetch & 0xFFF) > 0xFFF,
+                              (uint32_t) get_register(cur_inst->reg_1) + (uint32_t) fetch > 0xFFFF);
             }
             cycles(1);
-             */
+            */
             break;
         case ADC:{
-            uint16_t a = regs[A];
-            regs[A] = ((uint8_t)regs[A] + (uint8_t)fetch + (uint8_t)((regs[F] >> 4) & 0x1));
-            set_flags(regs[A] == 0, 0, (a & 0xF) + (fetch & 0xF) + ((regs[F] >> 4) & 0x1) > 0xF, a+fetch+((regs[F] >> 4) & 0x1) > 0xFF);
-            }
+            uint8_t temp = get_register(A);
+            set_register(A,temp+fetch+((regists.f >> 4) & 0x1));
+            set_flags(regists.a == 0, 0, (temp & 0xF) + (fetch & 0xF) + ((regists.f >> 4) & 0x1) > 0xF, temp+(uint8_t)fetch+((regists.f >> 4) & 0x1) > 0xFF);
+        }
             break;
         case SUB:
-            set_flags(regs[A] - fetch == 0, 1, ((int)regs[A] & 0xF) - ((int)fetch & 0xF) < 0,
-                      (int)regs[A] - (int)fetch < 0);
-            regs[A] -= (uint8_t)fetch;
+            set_flags(regists.a - fetch == 0, 1, ((int)regists.a & 0xF) - ((int)fetch & 0xF) < 0,
+                      (int)regists.a - (int)fetch < 0);
+            regists.a -= (uint8_t)fetch;
             break;
-        case SBC:
-            set_flags(regs[A] - fetch - ((regs[F] >> 4) & 0x1) == 0, 1,
-                      ((int)regs[A] & 0xF) - ((int)fetch & 0xF) - (int)((regs[F] >> 4) & 0x1) < 0,
-                      (int)regs[A] - (int)fetch - (int)((regs[F] >> 4) & 0x1) < 0);
-            regs[A] -= ((uint8_t)fetch + (uint8_t)((regs[F] >> 4) & 0x1));
+        case SBC: {
+            uint8_t temp = get_register(A);
+            set_register(A, temp - fetch - ((regists.f >> 4) & 0x1));
+            set_flags(regists.a == 0, 1,
+                      ((int) temp & 0xF) - ((int) fetch & 0xF) - (int) ((regists.f >> 4) & 0x1) < 0,
+                      (int) temp - (int) fetch - (int) ((regists.f >> 4) & 0x1) < 0);
+        }
             break;
         case RLCA: {
-            uint8_t temp = (regs[A] >> 7) & 0x1;
-            regs[A] = (regs[A] << 1) || temp;
-            set_flags(0,0,0,temp);
-            }
+            set_flags(0,0,0, get_register(A) >> 7);
+            uint8_t temp = (get_register(A) << 1) | (get_register(A) >> 7);
+            set_register(A,temp);
+        }
             break;
         case RLA: {
-            uint8_t temp = (regs[A] >> 7) & 0x1;
-            regs[A] = (regs[A] << 1) || temp;
-            set_flags(0, 0, 0, temp);
-            }
+            uint8_t temp = (get_register(A) << 1) | ((get_register(F) >> 4) & 1);
+            set_flags(0, 0, 0, (get_register(A) >> 7) & 0x1);
+            set_register(A,temp);
+        }
             break;
         case DI:
             master_enabled = false;
@@ -359,11 +364,11 @@ void cpu::exec(){
             ime = true;
             break;
         case POP:
-            if(cur_inst->reg_1 == AF) regs[AF] = pop() & 0xFFF0;
-            else regs[cur_inst->reg_1] = pop();
+            if(cur_inst->reg_1 == AF) regists.af = pop() & 0xFFF0;
+            else set_register(cur_inst->reg_1, pop());
             break;
         case PUSH:
-            push(regs[cur_inst->reg_1]);
+            push(get_register(cur_inst->reg_1));
             cycles(1);
             break;
         case CALL:
@@ -390,29 +395,38 @@ void cpu::exec(){
             cycles(1);
             break;
         case DAA:{
+            printf("DAA used\n");
             int u = 0;
             int fc = 0;
+/*
+            if(!((regs[F] >> 6) & 0x1)){
+                if(((regs[F] >> 4) & 0x1) || regs[A] > 0x99) {
+                    regs[A] += 0x60;
+                    set_flags(-1, -1, -1, 1);
+                }
+                if(((regs[F] >> 5) & 0x1) || (regs[A] & 0xF) > 0x9) regs[A] += 0x6;
+            }
+*/
 
-            if(((regs[F] >> 5) & 0x1) || (!((regs[F] >> 6) & 0x1) && ((regs[A] & 0xF) > 9))) u = 6;
-            if(((regs[F] >> 4) & 0x1) || (!((regs[F] >> 6) & 0x1) && regs[A] > 99)){
+            if(((get_register(F) >> 5) & 0x1) || (!((get_register(F) >> 6) & 0x1) && ((get_register(A) & 0xF) > 9))) u = 0x6;
+            if(((get_register(F) >> 4) & 0x1) || (!((get_register(F) >> 6) & 0x1) && get_register(A) > 99)){
                 u |= 0x60;
                 fc = 1;
             }
-            if((regs[F] >> 6) & 0x1) regs[A] += -u;
-            else regs[A] += u;
-
-            set_flags(regs[A] == 0, -1, 0, -1);
+            if((get_register(F) >> 6) & 0x1) set_register(A,get_register(A)-u);
+            else set_register(A,get_register(A)+u);
+            set_flags(get_register(A) == 0, -1, 0, fc);
         }
-        break;
+            break;
         case CPL:
-            regs[A] = ~regs[A];
+            regists.a = ~regists.a;
             set_flags(-1,1,1,-1);
             break;
         case SCF:
             set_flags(-1,0,0,1);
             break;
         case CCF:
-            set_flags(-1,0,0,((regs[F] >> 4) & 0x1) ^ 1);
+            set_flags(-1,0,0,((regists.f >> 4) & 0x1) ^ 1);
             break;
         case HALT:
             halt = true;
@@ -421,7 +435,7 @@ void cpu::exec(){
             cb();
             break;
         default:
-            printf("Unknown type");
+            printf("Unknown type %02X",opcode);
             exit(-3);
             break;
     }
@@ -432,45 +446,6 @@ void cpu::set_flags(int z, int n, int h, int c){
     if(n >= 0) BIT_SET(6,n);
     if(h >= 0) BIT_SET(5,h);
     if(c >= 0) BIT_SET(4,c);
-    regs[AF] = (regs[A] << 8) | regs[F];
-}
-
-void cpu::correct_regs(){
-    if(regs[A] != saved_regs[A] || regs[F] != saved_regs[F]) regs[AF] = regs[A] << 8 | regs[F];
-    if(regs[B] != saved_regs[B] || regs[C] != saved_regs[C]) {
-        regs[BC] = regs[B] << 8 | regs[C];
-
-    }
-    if(regs[D] != saved_regs[D] || regs[E] != saved_regs[E]) {
-        regs[DE] = regs[D] << 8 | regs[E];
-
-    }
-    if(regs[H] != saved_regs[H] || regs[L] != saved_regs[L]) {
-        regs[HL] = regs[H] << 8 | regs[L];
-
-    }
-
-    if(regs[BC] != saved_regs[BC]){
-        regs[B] = regs[BC] >> 8;
-        regs[C] = regs[BC] & 0x00FF;
-
-    }
-    else if(regs[DE] != saved_regs[DE]){
-        regs[D] = regs[DE] >> 8;
-        regs[E] = regs[DE] & 0x00FF;
-
-    }
-    else if(regs[HL] != saved_regs[HL]){
-        regs[H] = regs[HL] >> 8;
-        regs[L] = regs[HL] & 0x00FF;
-
-    }
-    else if(regs[AF] != saved_regs[AF]){
-        regs[A] = regs[AF] >> 8;
-        regs[F] = regs[AF] & 0x00FF;
-    }
-
-
 }
 
 uint8_t cpu::get_ie_register(){
@@ -481,26 +456,28 @@ void cpu::set_ie_register(uint8_t val){
 };
 
 void cpu::it_push(uint16_t val){
-    regs[SP]--;
-    bus_write(regs[SP],val >> 8);
-    regs[SP]--;
-    bus_write(regs[SP],val & 0xFF);
+    regists.sp--;
+    bus_write(regists.sp,val >> 8);
+    regists.sp--;
+    bus_write(regists.sp,val & 0xFF);
 }
 
 void cpu::push(uint16_t val){
-    regs[SP]--;
-    bus_write(regs[SP],val >> 8);
-    regs[SP]--;
-    bus_write(regs[SP],val & 0xFF);
+    regists.sp--;
+    bus_write(regists.sp,val >> 8);
+    regists.sp--;
+    bus_write(regists.sp,val & 0xFF);
     cycles(2);
 }
 
 uint16_t cpu::pop(){
-    uint8_t low = bus_read(regs[SP]++);
-    uint8_t high = bus_read(regs[SP]++);
+    uint8_t low = bus_read(regists.sp);
+    regists.sp++;
+    uint8_t high = bus_read(regists.sp);
+    regists.sp++;
     cycles(2);
 
-    return (high << 8) | low;
+    return low | (high << 8);
 }
 
 void cpu::check_interrupt(){
@@ -547,27 +524,27 @@ void cpu::cb(){
     cycles(1);
 
     if(cb_reg == HL) {
-        cb_fetch = bus_read(regs[HL]);
+        cb_fetch = bus_read(regists.hl);
         cycles(2);
     }
-    else cb_fetch = regs[cb_reg];
+    else cb_fetch = get_register(cb_reg);
 
     uint8_t val;
 
     if(cb_op < 0x08){
-        set_flags(((cb_fetch << 1) & 0xFF) == 0,0,0,(cb_fetch >> 7) & 0x1);
         val = (cb_fetch << 1) | ((cb_fetch >> 7) & 0x1);
+        set_flags(val == 0,0,0,(cb_fetch >> 7) & 0x1);
     }
     else if(cb_op < 0x10){
         val = (cb_fetch >> 1) | (cb_fetch << 7);
         set_flags(val == 0,0,0,cb_fetch & 0x1);
     }
     else if(cb_op < 0x18){
-        val = (cb_fetch << 1) | ((regs[F] >> 4) & 0x1);
+        val = (cb_fetch << 1) | ((regists.f >> 4) & 0x1);
         set_flags(val == 0,0,0,(cb_fetch >> 7) & 0x1);
     }
     else if(cb_op < 0x20){
-        val = (cb_fetch >> 1) | (((regs[F] >> 4) & 0x1) << 7);
+        val = (cb_fetch >> 1) | (((regists.f >> 4) & 0x1) << 7);
         set_flags(val == 0,0,0,cb_fetch & 0x1);
     }
     else if(cb_op < 0x28){
@@ -601,11 +578,62 @@ void cpu::cb(){
 
 
     if(cb_op < 0x40 || cb_op >= 0x80){
-        if(cb_reg == HL) bus_write(regs[HL],val);
-        else regs[cb_reg] = val;
+        if(cb_reg == HL) bus_write(regists.hl,val);
+        else set_register(cb_reg, val);
     }
 }
 
 void cpu::get_interrupt(uint8_t interrupt) {
     int_flags |= interrupt;
+}
+
+void cpu::set_register(REG regis,uint16_t val) {
+    switch(regis){
+        case A: regists.a = val & 0xFF; break;
+        case F: regists.f = val & 0xFF; break;
+        case B: regists.b = val & 0xFF; break;
+        case C: regists.c = val & 0xFF; break;
+        case D: regists.d = val & 0xFF; break;
+        case E: regists.e = val & 0xFF; break;
+        case H: regists.h = val & 0xFF; break;
+        case L: regists.l = val & 0xFF; break;
+
+        case AF: regists.af = val; break;
+        case BC: regists.bc = val; break;
+        case DE: regists.de = val; break;
+        case HL: regists.hl = val; break;
+        case SP: regists.sp = val; break;
+    }
+}
+
+uint16_t cpu::get_register(REG regis) {
+    switch(regis) {
+        case A:
+            return (uint16_t)regists.a;
+        case F:
+            return (uint16_t)regists.f;
+        case B:
+            return (uint16_t)regists.b;
+        case C:
+            return (uint16_t)regists.c;
+        case D:
+            return (uint16_t)regists.d;
+        case E:
+            return (uint16_t)regists.e;
+        case H:
+            return (uint16_t)regists.h;
+        case L:
+            return (uint16_t)regists.l;
+
+        case AF:
+            return regists.af;
+        case BC:
+            return regists.bc;
+        case DE:
+            return regists.de;
+        case HL:
+            return regists.hl;
+        case SP:
+            return regists.sp;
+    }
 }

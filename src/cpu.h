@@ -3,12 +3,52 @@
 #include "emu.h"
 #include <map>
 
-#define BIT_SET(n, on) { if (on) regs[F] |= (1 << n); else regs[F] &= ~(1 << n);}
+#define BIT_SET(n, on) { if (on) regists.f = regists.f | (1 << n); else regists.f = regists.f & ~(1 << n);}
+
+
+
+typedef struct{
+    union {
+        struct {
+            uint8_t f;
+            uint8_t a;
+        };
+        uint16_t af;
+    };
+
+    union {
+        struct {
+            uint8_t c;
+            uint8_t b;
+        };
+        uint16_t bc;
+    };
+
+    union {
+        struct {
+            uint8_t e;
+            uint8_t d;
+        };
+        uint16_t de;
+    };
+
+    union {
+        struct {
+            uint8_t l;
+            uint8_t h;
+        };
+        uint16_t hl;
+    };
+
+    uint16_t sp;
+}registers;
+
+
 
 class cpu{
 public:
-    std::map<REG, uint16_t> regs;
-    std::map<REG, uint16_t> saved_regs;
+    registers regists;
+
     REG cb_reg;
     uint8_t cb_fetch;
     uint8_t opcode;
@@ -23,8 +63,14 @@ public:
     bool ime;
 
 
+
     cpu(){
-        regs = {{A,0x01}, {B,0x00}, {C,0x13}, {D,0x00}, {E,0xD8}, {F,0xB0}, {H,0x01}, {L,0x4D}, {AF,0x01B0}, {BC,0x0013}, {DE,0x00D8}, {HL,0x014D}, {SP,0xFFFE}};
+        regists.af = 0x01B0;
+        regists.bc = 0x0013;
+        regists.de = 0x00D8;
+        regists.hl = 0x014D;
+        regists.sp = 0xFFFE;
+
         pc = 0x100;
         halt = false;
         ie_register = 0;
@@ -41,11 +87,14 @@ public:
     uint16_t pop();
     void set_flags(int z, int n, int h, int c);
 
-    void correct_regs();
 
     uint8_t get_ie_register();
 
     void set_ie_register(uint8_t val);
+
+    void set_register(REG regis,uint16_t val);
+
+    uint16_t get_register(REG regis);
 
     void check_interrupt();
 

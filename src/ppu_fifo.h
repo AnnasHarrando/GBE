@@ -23,12 +23,12 @@ typedef struct fifo{
     uint8_t line_x = 0;
     uint8_t pushed_x = 0;
     uint8_t fetch_x = 0;
-    uint8_t bgw_fetch_data[3];
-    uint8_t fetch_entry_data[6]; //oam data..
-    uint8_t map_y;
-    uint8_t map_x;
-    uint8_t tile_y;
-    uint8_t fifo_x;
+    uint8_t bgw_fetch_data[3] = {0};
+    uint8_t fetch_entry_data[6] = {0}; //oam data..
+    uint8_t map_y = 0;
+    uint8_t map_x = 0;
+    uint8_t tile_y = 0;
+    uint8_t fifo_x = 0;
 }fifo;
 
 void init(ppu ppu);

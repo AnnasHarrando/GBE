@@ -22,8 +22,8 @@ class ppu {
 public:
     lcd *LCD = get_lcd();
 
-    oam oam_ram[40];
-    uint8_t vram[0x2000];
+    oam oam_ram[40] = {0};
+    uint8_t vram[0x2000] = {0};
 
     bool dma_active = false;
     uint8_t dma_byte;

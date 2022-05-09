@@ -66,15 +66,15 @@ int start(int argc, char **argv) {
     {
         // Thread creation failed.
         // More details can be retrieved by calling GetLastError()
-        printf("damn");
         return 1;
     }
 
     ui_init();
-    while(true){
+    while(running){
         running = ui_handle_events();
         update_screen(ppu.buffer);
         update_dbg_window();
+        t_update_dbg_window();
 
     }
 }
@@ -93,7 +93,7 @@ uint8_t emu_read(uint16_t addr, component comp) {
 
 void emu_write(uint16_t addr, uint8_t val, component comp) {
     switch(comp){
-        case WRAM: ram.wram_write(addr,val); break;
+        case WRAM:ram.wram_write(addr,val); break;
         case HRAM: ram.hram_write(addr,val); break;
         case CART: cart.write(addr,val); break;
         case IO: io.write(addr,val); break;

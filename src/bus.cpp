@@ -1,7 +1,3 @@
-//
-// Created by annas on 04/05/2022.
-//
-
 #include "bus.h"
 
 uint8_t bus::read(uint16_t addr) {

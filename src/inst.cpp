@@ -6,9 +6,9 @@ static instruction instructions[0x100];
 
 void init(){
 
-    instructions[0x00] =  {NOP, IMP};
+    instructions[0x00] =  {NOP};
     instructions[0x01] =  {LD,R_D16,BC};
-    instructions[0x02] =  {LD,D16_R,BC,A};
+    instructions[0x02] =  {LD,MR_R,BC,A};
     instructions[0x03] =  {INC,R,BC};
     instructions[0x04] =  {INC,R,B};
     instructions[0x05] =  {DEC, R, B};
@@ -169,7 +169,7 @@ void init(){
     instructions[0x93] = {SUB, R,E};
     instructions[0x94] = {SUB, R,H};
     instructions[0x95] = {SUB, R,L};
-    instructions[0x96] = {SUB, MR,HL};
+    instructions[0x96] = {SUB, R_MR, A, HL};
     instructions[0x97] = {SUB, R,A};
     instructions[0x98] = {SBC, R,B};
     instructions[0x99] = {SBC, R,C};
@@ -177,7 +177,7 @@ void init(){
     instructions[0x9B] = {SBC, R,E};
     instructions[0x9C] = {SBC, R,H};
     instructions[0x9D] = {SBC, R,L};
-    instructions[0x9E] = {SBC, MR,HL};
+    instructions[0x9E] = {SBC, R_MR, A, HL};
     instructions[0x9F] = {SBC, R,A};
 
     instructions[0xA0] = {AND, R, B};
@@ -186,7 +186,7 @@ void init(){
     instructions[0xA3] = {AND, R, E};
     instructions[0xA4] = {AND, R, H};
     instructions[0xA5] = {AND, R, L};
-    instructions[0xA6] = {AND, MR, HL};
+    instructions[0xA6] = {AND, R_MR, A, HL};
     instructions[0xA7] = {AND, R, A};
     instructions[0xA8] = {XOR, R, B};
     instructions[0xA9] = {XOR, R, C};
@@ -194,7 +194,7 @@ void init(){
     instructions[0xAB] = {XOR, R, E};
     instructions[0xAC] = {XOR, R, H};
     instructions[0xAD] = {XOR, R, L};
-    instructions[0xAE] = {XOR, MR, HL};
+    instructions[0xAE] = {XOR, R_MR, A, HL};
     instructions[0xAF] =  {XOR, R, A};
 
     instructions[0xB0] =  {OR, R, B};
@@ -203,7 +203,7 @@ void init(){
     instructions[0xB3] =  {OR, R, E};
     instructions[0xB4] =  {OR, R, H};
     instructions[0xB5] =  {OR, R, L};
-    instructions[0xB6] =  {OR, MR, HL};
+    instructions[0xB6] =  {OR, R_MR, A, HL};
     instructions[0xB7] =  {OR, R, A};
     instructions[0xB8] =  {CP, R, B};
     instructions[0xB9] =  {CP, R, C};
@@ -211,7 +211,7 @@ void init(){
     instructions[0xBB] =  {CP, R, E};
     instructions[0xBC] =  {CP, R, H};
     instructions[0xBD] =  {CP, R, L};
-    instructions[0xBE] =  {CP, MR, HL};
+    instructions[0xBE] =  {CP, R_MR, A, HL};
     instructions[0xBF] =  {CP, R, A};
 
     instructions[0xC0] =  {RET,IMP,R_NONE,R_NONE,CT_NZ};
@@ -270,7 +270,7 @@ void init(){
     instructions[0xF5] =  {PUSH,IMP,AF};
     instructions[0xF6] =  {OR, D8};
     instructions[0xF7] =  {RST, IMP, R_NONE, R_NONE, CT_NONE, 0x0030};
-    instructions[0xF8] =  {LD, HL_SPR,HL};
+    instructions[0xF8] =  {LD, HL_SPR,HL,SP};
     instructions[0xF9] =  {LD,R_R,SP,HL};
     instructions[0xFA] =  {LD,R_A16,A};
     instructions[0xFB] =  {EI};
@@ -280,9 +280,6 @@ void init(){
 
 }
 
-instruction test(){
-    return instructions[0];
-}
 
 instruction *get_instruction(uint8_t opcode) {
     return &instructions[opcode];
