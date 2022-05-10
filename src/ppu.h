@@ -25,6 +25,12 @@ public:
     oam oam_ram[40] = {0};
     uint8_t vram[0x2000] = {0};
 
+    oam line_sprites[10];
+    uint8_t line_sprites_size;
+
+    uint8_t fetch_entry_size = 0;
+    oam fetch_entry[3];
+
     bool dma_active = false;
     uint8_t dma_byte;
     uint8_t dma_val;
@@ -51,6 +57,8 @@ public:
     void hblank_mode();
 
     void inc_ly();
+
+
 };
 
 #endif

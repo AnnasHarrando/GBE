@@ -96,6 +96,7 @@ void ppu::oam_mode(){
         lcds_set(MODE_DRAW);
         fifo_set_draw();
     }
+    if(dots == 1) fifo_load_sprites(oam_ram);
 }
 
 void ppu::draw_mode(){
@@ -146,6 +147,7 @@ void ppu::hblank_mode(){
 
             frame_count++;
             prev_frametime = SDL_GetTicks();
+            //printf("x: %i y: %i\n",oam_ram[0].x,oam_ram[0].y);
         }
         else lcds_set(MODE_OAM);
 

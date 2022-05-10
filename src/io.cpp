@@ -2,7 +2,9 @@
 // Created by annas on 13/04/2022.
 //
 #include "io.h"
+#include "screen.h"
 uint8_t io::read(uint16_t addr) {
+    if(addr == 0xFF00) return get_button_press();
     if(addr == 0xFF01) return serial_data[0];
     if(addr == 0xFF02) return serial_data[1];
     if((addr >= 0xFF04) && (addr <= 0xFF07)) return timer_read(addr);
@@ -13,6 +15,7 @@ uint8_t io::read(uint16_t addr) {
 }
 
 void io::write(uint16_t addr, uint8_t val) {
+    if(addr == 0xFF00) set_button_type(val);
     if(addr == 0xFF01) serial_data[0] = val;
     if(addr == 0xFF02) serial_data[1] = val;
     if((addr >= 0xFF04) && (addr <= 0xFF07)) timer_write(addr,val);

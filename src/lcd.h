@@ -37,12 +37,14 @@ typedef enum {
     STAT_LYC
 } stat_mode;
 
+uint8_t get_sprite_height();
 uint8_t lcd_read(uint16_t address);
 void lcd_write(uint16_t address, uint8_t value);
 void update_palette(uint8_t val, uint8_t palette);
 void lcds_set(uint8_t val);
 bool stat_int(stat_mode mode);
 bool BGW_enabled();
+bool OBJ_enabled();
 uint16_t BGW_data_loc();
 uint16_t BG_map_loc();
 lcd_mode get_mode();

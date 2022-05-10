@@ -18,6 +18,11 @@ SDL_Renderer *t_sdlDebugRenderer;
 SDL_Texture *t_sdlDebugTexture;
 SDL_Surface *t_debugScreen;
 
+SDL_Window *oam_sdlDebugWindow;
+SDL_Renderer *oam_sdlDebugRenderer;
+SDL_Texture *oam_sdlDebugTexture;
+SDL_Surface *oam_debugScreen;
+
 static int scale = 4;
 
 void ui_init(){
@@ -36,7 +41,7 @@ void ui_init(){
                                    SDL_PIXELFORMAT_ARGB8888,
                                    SDL_TEXTUREACCESS_STREAMING,
                                 1024, 768);
-
+/*
     SDL_CreateWindowAndRenderer(16 * 8 * scale, 32 * 8 * scale, 0,
                                 &sdlDebugWindow, &sdlDebugRenderer);
 
@@ -69,6 +74,22 @@ void ui_init(){
                                         (32 * 8 * scale) + (32 * scale),
                                         (32 * 8 * scale) + (64 * scale));
 
+    SDL_CreateWindowAndRenderer(16 * 8 * scale, 16 * 8 * scale, 0,
+                                &oam_sdlDebugWindow, &oam_sdlDebugRenderer);
+
+    oam_debugScreen = SDL_CreateRGBSurface(0, (16 * 8 * scale) + (16 * scale),
+                                         (16 * 8 * scale) + (16 * scale), 32,
+                                         0x00FF0000,
+                                         0x0000FF00,
+                                         0x000000FF,
+                                         0xFF000000);
+
+    oam_sdlDebugTexture = SDL_CreateTexture(oam_sdlDebugRenderer,
+                                          SDL_PIXELFORMAT_ARGB8888,
+                                          SDL_TEXTUREACCESS_STREAMING,
+                                          (16 * 8 * scale) + (16 * scale),
+                                          (16 * 8 * scale) + (16 * scale));
+*/
     int x, y;
     SDL_GetWindowPosition(window, &x, &y);
     SDL_SetWindowPosition(sdlDebugWindow, x + 1024 + 10, y);
@@ -116,6 +137,29 @@ void t_display_tile(SDL_Surface *screen, uint16_t startLocation, int x, int y) {
             rc.y = y + (tileY / 2 * (scale/2));
             rc.w = (scale/2);
             rc.h = (scale/2);
+
+            SDL_FillRect(screen, &rc, tile_colors[color]);
+        }
+    }
+}
+
+void oam_display_tile(SDL_Surface *screen, uint16_t startLocation, int x, int y) {
+    SDL_Rect rc;
+
+    for (int tileY=0; tileY<16; tileY += 2) {
+        uint8_t b1 = bus_read(startLocation + tileY);
+        uint8_t b2 = bus_read(startLocation + tileY + 1);
+
+        for (int bit=7; bit >= 0; bit--) {
+            uint8_t hi = !!(b1 & (1 << bit)) << 1;
+            uint8_t lo = !!(b2 & (1 << bit));
+
+            uint8_t color = hi | lo;
+
+            rc.x = x + ((7 - bit) * (scale));
+            rc.y = y + (tileY / 2 * (scale));
+            rc.w = (scale);
+            rc.h = (scale);
 
             SDL_FillRect(screen, &rc, tile_colors[color]);
         }
@@ -175,6 +219,35 @@ void t_update_dbg_window() {
     SDL_RenderPresent(t_sdlDebugRenderer);
 }
 
+void oam_update_dbg_window(uint8_t *val) {
+    int xDraw = 0;
+    int yDraw = 0;
+
+    SDL_Rect rc;
+    rc.x = 0;
+    rc.y = 0;
+    rc.w = oam_debugScreen->w;
+    rc.h = oam_debugScreen->h;
+    SDL_FillRect(oam_debugScreen, &rc, 0xFF111111);
+
+
+    for (int y=0; y<4; y++) {
+        for (int x=0; x<10; x++) {
+            uint16_t tile = 0x8000 + val[x + y*10] *16;
+            oam_display_tile(oam_debugScreen, tile, xDraw + (x * (scale)), yDraw + (y * (scale)));
+            xDraw += (8 * (scale));
+        }
+
+        yDraw += (8 * (scale));
+        xDraw = 0;
+    }
+
+    SDL_UpdateTexture(oam_sdlDebugTexture, NULL, oam_debugScreen->pixels, oam_debugScreen->pitch);
+    SDL_RenderClear(oam_sdlDebugRenderer);
+    SDL_RenderCopy(oam_sdlDebugRenderer, oam_sdlDebugTexture, NULL, NULL);
+    SDL_RenderPresent(oam_sdlDebugRenderer);
+}
+
 void update_dbg_window() {
     int xDraw = 0;
     int yDraw = 0;
@@ -208,9 +281,67 @@ void update_dbg_window() {
 }
 
 
+bool dir_button;
+bool action_button;
+bool start_button;
+bool select_button;
+bool a;
+bool b;
+bool up;
+bool down;
+bool left;
+bool right;
+
+void set_button_type(uint8_t val){
+    dir_button = val & 0x20;
+    action_button = val & 0x10;
+}
+
+uint8_t get_button_press(){
+    uint8_t val = 0b11000000;
+    if(action_button){
+        if(!a) val |= 0b1;
+        if(!b) val |= 0b10;
+        if(!select_button) val |= 0b100;
+        if(!start_button) val |= 0b1000;
+    }
+    if(dir_button){
+        if(!right) val |= 0b1;
+        if(!left) val |= 0b10;
+        if(!up) val |= 0b100;
+        if(!down) val |= 0b1000;
+    }
+    return val;
+}
+
 bool ui_handle_events(){
     SDL_Event event;
     while(SDL_PollEvent(&event)){
+        if(event.type == SDL_KEYDOWN){
+            switch(event.key.keysym.sym){
+                case SDLK_w: up = true; break;
+                case SDLK_s: down = true; break;
+                case SDLK_a: left = true; break;
+                case SDLK_d: right = true; break;
+                case SDLK_l: a = true; break;
+                case SDLK_k: b = true; break;
+                case SDLK_p: start_button = true; break;
+                case SDLK_u: select_button = true; break;
+            }
+        }
+        if(event.type == SDL_KEYUP){
+            switch(event.key.keysym.sym){
+                case SDLK_w: up = false; break;
+                case SDLK_s: down = false; break;
+                case SDLK_a: left = false; break;
+                case SDLK_d: right = false; break;
+                case SDLK_l: a = false; break;
+                case SDLK_k: b = false; break;
+                case SDLK_p: start_button = false; break;
+                case SDLK_u: select_button = false; break;
+            }
+        }
+
         if (event.type == SDL_QUIT) {
 
             SDL_DestroyWindow(window);

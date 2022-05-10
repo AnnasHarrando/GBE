@@ -9,6 +9,11 @@ lcd * get_lcd(){
     return &LCD;
 }
 
+uint8_t get_sprite_height(){
+    if((LCD.lcdc >> 2) & 0x1) return 16;
+    else return 8;
+}
+
 bool stat_int(stat_mode mode){
     switch (mode) {
         case STAT_HBLANK:
@@ -93,6 +98,10 @@ lcd_mode get_mode(){
 
 bool BGW_enabled(){
     return LCD.lcdc & 1;
+}
+
+bool OBJ_enabled(){
+    return (LCD.lcdc & 0b10);
 }
 
 

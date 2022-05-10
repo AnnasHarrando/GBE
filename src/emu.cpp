@@ -48,6 +48,15 @@ void fifo_init(){
     init(ppu);
 }
 
+
+uint8_t *get_oam_tiles(){
+    uint8_t *temp = static_cast<uint8_t *>(malloc(40));
+    for(int i=0; i<40; i++){
+        temp[i] = ppu.oam_ram[i].tile;
+    }
+    return temp;
+}
+
 int start(int argc, char **argv) {
     cart.cart_load(argv[1]);
     init();
@@ -73,8 +82,9 @@ int start(int argc, char **argv) {
     while(running){
         running = ui_handle_events();
         update_screen(ppu.buffer);
-        update_dbg_window();
-        t_update_dbg_window();
+        //update_dbg_window();
+        //t_update_dbg_window();
+        //oam_update_dbg_window(get_oam_tiles());
 
     }
 }
