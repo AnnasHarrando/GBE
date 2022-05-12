@@ -291,6 +291,11 @@ bool up;
 bool down;
 bool left;
 bool right;
+uint32_t fps = 1000/60;
+
+uint32_t get_fps(){
+    return fps;
+}
 
 void set_button_type(uint8_t val){
     dir_button = val & 0x20;
@@ -327,6 +332,9 @@ bool ui_handle_events(){
                 case SDLK_k: b = true; break;
                 case SDLK_p: start_button = true; break;
                 case SDLK_u: select_button = true; break;
+                case SDLK_1: fps = 1000/60; break;
+                case SDLK_2: fps = 500/60; break;
+                case SDLK_3: fps = 125/60; break;
             }
         }
         if(event.type == SDL_KEYUP){

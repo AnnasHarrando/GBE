@@ -45,6 +45,8 @@ void lcds_set(uint8_t val);
 bool stat_int(stat_mode mode);
 bool BGW_enabled();
 bool OBJ_enabled();
+bool window_enabled();
+uint16_t win_map_loc();
 uint16_t BGW_data_loc();
 uint16_t BG_map_loc();
 lcd_mode get_mode();

@@ -13,7 +13,7 @@ void init(ppu ppu){
     PPU = ppu;
 }
 
-bool compare(oam left,oam right){ return left.x < right.x;}
+bool compare(oam left,oam right){ return left.x > right.x;}
 
 void fifo_load_sprites(oam sprites[40]) {
     memset(PPU.line_sprites,0,10);
@@ -32,7 +32,7 @@ void fifo_load_sprites(oam sprites[40]) {
             PPU.line_sprites_size++;
         }
     }
-    std::sort(PPU.line_sprites,PPU.line_sprites+PPU.line_sprites_size, compare);
+    //std::sort(PPU.line_sprites,PPU.line_sprites+PPU.line_sprites_size, compare);
 }
 
 void fifo_set_draw(){
@@ -153,6 +153,27 @@ void fifo_load_sprite_data(uint8_t val){
     }
 }
 
+bool window_in_x(){
+    return FIFO.fetch_x + 7 >= PPU.LCD->x_win && FIFO.fetch_x + 7 < PPU.LCD->x_win + 144 + 14;
+}
+
+bool window_in_y(){
+    return PPU.LCD->ly >= PPU.LCD->y_win && PPU.LCD->ly < PPU.LCD->y_win + 160;
+}
+
+void fifo_load_window(){
+    if(window_enabled()) {
+        if (window_in_x() && window_in_y()) {
+            uint8_t y = get_window_line() / 8;
+           // printf("windowline: %i\n",get_window_line());
+            //printf("addr: %04X tile: %i\n",win_map_loc() + ((FIFO.fetch_x + 7 - PPU.LCD->x_win) / 8) + (y * 32),y);
+            FIFO.bgw_fetch_data[0] = bus_read(win_map_loc() + ((FIFO.fetch_x + 7 - PPU.LCD->x_win) / 8) + (y * 32));
+            if (BGW_data_loc() == 0x8800) FIFO.bgw_fetch_data[0] += 128;
+        }
+    }
+
+}
+
 void fifo_fetch(){
     switch(FIFO.cur_state){
         case F_TILE:
@@ -161,6 +182,8 @@ void fifo_fetch(){
                 FIFO.bgw_fetch_data[0] = bus_read(BG_map_loc() + (FIFO.map_x / 8) + ((FIFO.map_y / 8) * 32));
 
                 if(BGW_data_loc() == 0x8800) FIFO.bgw_fetch_data[0] += 128;
+
+                fifo_load_window();
             }
 
             if(OBJ_enabled() && PPU.line_sprites_size > 0) {

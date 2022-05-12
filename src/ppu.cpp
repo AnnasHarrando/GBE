@@ -75,7 +75,6 @@ void ppu::tick() {
 static const int LCD_STAT = 2;
 static const int VBLANK_STAT = 1;
 
-uint32_t fps = 1000/60;
 unsigned long prev_frametime = 0;
 unsigned long start_time = 0;
 unsigned long frame_count = 0;
@@ -84,11 +83,18 @@ unsigned long frame_count = 0;
 void ppu::inc_ly(){
     LCD->ly++;
 
+    if(window_enabled() && LCD->ly >= LCD->y_win && LCD->ly < LCD->y_win + 144) window_line++;
+
+
     if(LCD->ly == LCD->lyc){
         LCD->stat |= (1 << 2);
         if(stat_int(STAT_LYC)) get_interrupt(LCD_STAT);
     }
     else LCD->stat &= ~(1 << 2);
+}
+
+uint8_t ppu::get_window_line(){
+    return window_line;
 }
 
 void ppu::oam_mode(){
@@ -101,6 +107,7 @@ void ppu::oam_mode(){
 
 void ppu::draw_mode(){
     fifo_proc();
+
     if(drawing_stopped()){
         fifo_reset();
         lcds_set(MODE_HBLANK);
@@ -115,6 +122,7 @@ void ppu::vblank_mode(){
         if(LCD->ly >= 154){
             lcds_set(MODE_OAM);
             LCD->ly = 0;
+            window_line = 0;
         }
         dots = 0;
     }
@@ -133,8 +141,8 @@ void ppu::hblank_mode(){
             cur_frame++;
 
             uint32_t end_time = SDL_GetTicks();
-            if(end_time - prev_frametime < fps){
-                SDL_Delay(fps-(end_time - prev_frametime));
+            if(end_time - prev_frametime < get_fps()){
+                SDL_Delay(get_fps()-(end_time - prev_frametime));
             }
 
             if (end_time - start_time >= 1000) {
@@ -147,7 +155,6 @@ void ppu::hblank_mode(){
 
             frame_count++;
             prev_frametime = SDL_GetTicks();
-            //printf("x: %i y: %i\n",oam_ram[0].x,oam_ram[0].y);
         }
         else lcds_set(MODE_OAM);
 

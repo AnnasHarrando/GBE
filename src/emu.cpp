@@ -57,6 +57,10 @@ uint8_t *get_oam_tiles(){
     return temp;
 }
 
+uint8_t get_window_line(){
+    return ppu.window_line;
+}
+
 int start(int argc, char **argv) {
     cart.cart_load(argv[1]);
     init();

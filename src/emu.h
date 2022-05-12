@@ -31,6 +31,8 @@ void set_int_flags(uint8_t val);
 void dma_start(uint8_t val);
 void fifo_init();
 
+uint8_t get_window_line();
+
 void cycles(uint8_t cycle);
 
 #endif //GBE_BUS_H

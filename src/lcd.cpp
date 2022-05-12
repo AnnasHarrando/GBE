@@ -113,3 +113,13 @@ uint16_t BG_map_loc(){
     if(LCD.lcdc & (1 << 3)) return 0x9C00;
     else return 0x9800;
 }
+
+bool window_enabled(){
+    return ((LCD.lcdc >> 5) & 1) && LCD.x_win >= 0 && LCD.x_win <= 166 && LCD.y_win >= 0
+    && LCD.y_win < 144;
+}
+
+uint16_t win_map_loc(){
+    if((LCD.lcdc >> 6) & 0x1) return 0x9C00;
+    else return 0x9800;
+}

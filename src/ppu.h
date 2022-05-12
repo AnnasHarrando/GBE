@@ -28,6 +28,8 @@ public:
     oam line_sprites[10];
     uint8_t line_sprites_size;
 
+    uint8_t window_line;
+
     uint8_t fetch_entry_size = 0;
     oam fetch_entry[3];
 
@@ -39,6 +41,10 @@ public:
     uint32_t cur_frame = 0;
     uint32_t dots = 0;
     uint32_t *buffer = static_cast<uint32_t *>(malloc(144 * 160 * sizeof(uint32_t)));
+
+    ppu(){
+        window_line = 0;
+    }
 
     void tick();
 
@@ -59,6 +65,7 @@ public:
     void inc_ly();
 
 
+    uint8_t get_window_line();
 };
 
 #endif
