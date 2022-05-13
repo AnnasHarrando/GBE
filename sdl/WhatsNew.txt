@@ -701,7 +701,7 @@ IMPORTANT: You MUST get the updated SDLActivity.java to match C code
 * Moved EGL initialization to native code 
 * Fixed the accelerometer axis rotation relative to the device rotation
 * Fixed race conditions when handling the EGL context on pause/resume
-* Touch devices are available for enumeration immediately after init
+* Touch devices are available for enumeration immediately after inst_init
 
 Raspberry Pi:
 * Added support for the Raspberry Pi, see README-raspberrypi.txt for details

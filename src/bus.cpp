@@ -1,9 +1,13 @@
 #include "bus.h"
 
 uint8_t bus::read(uint16_t addr) {
-        if (addr < 0x8000) {
+        if (addr < 0x4000) {
             //ROM Data
             return emu_read(addr,CART);
+        }
+        if (addr < 0x8000) {
+            //ROM Data
+            return emu_read(addr,CART_BANK);
         }
         else if (addr < 0xA000) {
             //Char/Map Data
@@ -11,7 +15,7 @@ uint8_t bus::read(uint16_t addr) {
         }
         else if (addr < 0xC000) {
             //Cartridge RAM
-            return emu_read(addr,CART);
+            return emu_read(addr,RAM_BANK);
         }
         else if (addr < 0xE000) {
             //WRAM (Working RAM)
@@ -47,9 +51,13 @@ uint8_t bus::read(uint16_t addr) {
 
 void bus::write(uint16_t addr, uint8_t val) {
     //printf("Writing to %04X\n\n", addr);
-    if (addr < 0x8000) {
+    if (addr < 0x4000) {
         //ROM Data
         emu_write(addr, val,CART);
+    }
+    if (addr < 0x8000) {
+        //ROM Data
+        //emu_write(addr, val, CART_BANK);
     }
     else if (addr < 0xA000) {
         //Char/Map Data
@@ -57,7 +65,7 @@ void bus::write(uint16_t addr, uint8_t val) {
     }
     else if (addr < 0xC000) {
         //EXT-RAM
-        emu_write(addr, val,CART);
+        emu_write(addr, val,RAM_BANK);
     }
     else if (addr < 0xE000) {
         //WRAM

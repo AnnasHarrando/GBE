@@ -1,43 +1,23 @@
 #include "cpu.h"
 #include <iostream>
 #include <cstdlib>
-#include <vector>
 
 using namespace std;
 
 
-static vector<uint8_t> opcodelist;
-static uint16_t temp = 0;
-static uint16_t temp2 = 0;
-
-
 void cpu::step(){
 
-    while(opcodelist.size() < 3) opcodelist.push_back(0);
-/*
-    if((opcodelist.at(1) == 0xD5) && (opcodelist.at(2) == 0xF1)){
-        if(temp % 256 == 0) {printf("succes %i A:%i\n",temp2,regs[E]); temp2++;}
-        temp++;
-    }
-     */
-
-
     if(!halt) {
-        uint16_t cur_pc = pc;
-        //saved_regs = regs;
+        //uint16_t cur_pc = pc;
 
         opcode = bus_read(pc++);
         cur_inst = get_instruction(opcode);
         cycles(1);
 
-        //opcodelist.push_back(opcode);
-        //opcodelist.erase(opcodelist.begin());
-        //if((opcodelist.at(1) == 0x07) || (opcodelist.at(2) == 0x07)) {
-
             //printf("%04X: %-7s (%02X %02X %02X)\n", cur_pc, inst_name(cur_inst->type), opcode, bus_read(pc),
             //       bus_read(pc + 1));
             //printf("AF: %04X, BC: %04X, DE: %04X, HL: %04X SP:%04X\n", get_register(AF),get_register(BC),get_register(DE),get_register(HL),get_register(SP));
-        //}
+
         load_in_mem = 0;
         fetch_data();
         exec();
@@ -162,7 +142,7 @@ void cpu::fetch_data(){
         }
             break;
         default:
-            printf("Unknown Addressing Mode! %d (%02X)\n", cur_inst->mode, opcode);
+            printf("unknown mode %d (%02X)\n", cur_inst->mode, opcode);
             exit(-7);
     }
 }
@@ -185,9 +165,8 @@ bool cpu::cond(){
 void cpu::exec(){
     switch(cur_inst->type){
         case I_NONE:
-            printf("Unknown type   I_NONE");
+            printf("Unknown type I_NONE");
             exit(-3);
-            break;
         case NOP:
             break;
         case JP:
@@ -301,30 +280,6 @@ void cpu::exec(){
                     set_flags(get_register(A) == 0,0,(temp & 0xF) + (fetch & 0xF) > 0xF,temp + fetch > 0xFF);
                 }
             }
-
-/*
-            switch (opcode & 0xF0) {
-                case 0x80:
-                case 0xC0:
-                    set_register(cur_inst->reg_1, get_register(cur_inst->reg_1) + fetch);
-                    set_flags(get_register(cur_inst->reg_1) == 0,0,(get_register(cur_inst->reg_1) & 0xF) + (fetch & 0xF) > 0xF,get_register(cur_inst->reg_1) + fetch > 0xFF);
-                    break;
-                case 0xE0: {
-                    signed char temp = (signed char) fetch;
-                    cycles(1);
-                    regists.sp += temp;
-                    set_flags(0, 0, (regists.sp & 0xF) + (fetch & 0xF) > 0xF,
-                              (int)(regists.sp & 0xFF) + (int)(fetch & 0xFF) > 0xFF);
-                }
-                    break;
-                default:
-                    set_register(cur_inst->reg_1, get_register(cur_inst->reg_1) + fetch);
-                    cycles(1);
-                    set_flags(-1, 0, (get_register(cur_inst->reg_1) & 0xFFF) + (fetch & 0xFFF) > 0xFFF,
-                              (uint32_t) get_register(cur_inst->reg_1) + (uint32_t) fetch > 0xFFFF);
-            }
-            cycles(1);
-            */
             break;
         case ADC:{
             uint8_t temp = get_register(A);
@@ -398,15 +353,6 @@ void cpu::exec(){
             printf("DAA used\n");
             int u = 0;
             int fc = 0;
-/*
-            if(!((regs[F] >> 6) & 0x1)){
-                if(((regs[F] >> 4) & 0x1) || regs[A] > 0x99) {
-                    regs[A] += 0x60;
-                    set_flags(-1, -1, -1, 1);
-                }
-                if(((regs[F] >> 5) & 0x1) || (regs[A] & 0xF) > 0x9) regs[A] += 0x6;
-            }
-*/
 
             if(((get_register(F) >> 5) & 0x1) || (!((get_register(F) >> 6) & 0x1) && ((get_register(A) & 0xF) > 9))) u = 0x6;
             if(((get_register(F) >> 4) & 0x1) || (!((get_register(F) >> 6) & 0x1) && get_register(A) > 99)){
@@ -416,7 +362,7 @@ void cpu::exec(){
             if((get_register(F) >> 6) & 0x1) set_register(A,get_register(A)-u);
             else set_register(A,get_register(A)+u);
             set_flags(get_register(A) == 0, -1, 0, fc);
-        }
+            }
             break;
         case CPL:
             regists.a = ~regists.a;
@@ -437,7 +383,6 @@ void cpu::exec(){
         default:
             printf("Unknown type %02X",opcode);
             exit(-3);
-            break;
     }
 }
 

@@ -8,6 +8,13 @@ public:
     uint32_t rom_size;
     uint8_t *rom_data;
 
+    uint8_t cart_type;
+
+    uint8_t *cur_rom_bank;
+    uint8_t *rom_banks[16];
+
+
+
     void cart_load(char *cart){
         snprintf(filename, sizeof(filename), "%s", cart);
 
@@ -28,8 +35,17 @@ public:
         fclose(fp);
 
         printf("Cartridge Loaded:\n");
+
+        cart_type = rom_data[0x0147];
+        cur_rom_bank = rom_data + 0x4000;
     };
 
     uint8_t read(uint16_t address);
     void write(uint16_t address, uint8_t value);
+
+    uint8_t rom_bank_read(uint16_t address);
+    void rom_bank_write(uint16_t address, uint8_t value);
+
+    uint8_t ram_read(uint16_t address);
+    void ram_write(uint16_t address, uint8_t value);
 };

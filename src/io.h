@@ -1,7 +1,6 @@
 #ifndef GBE_IO_H
 #define GBE_IO_H
 
-
 #include <cstdint>
 #include "timer.h"
 #include "lcd.h"

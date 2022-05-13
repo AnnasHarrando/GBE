@@ -3,7 +3,6 @@
 #include "ppu_fifo.h"
 
 
-
 uint8_t ppu::oam_read(uint16_t addr) {
     if(addr >= 0xFE00) addr -= 0xFE00;
 
@@ -16,7 +15,6 @@ void ppu::oam_write(uint16_t addr, uint8_t val){
 
     uint8_t *p = (uint8_t *)oam_ram;
     p[addr] = val;
-    //printf("addr: %04X val: %02X\n",addr,val);
 }
 
 uint8_t ppu::vram_read(uint16_t addr) {
@@ -25,10 +23,6 @@ uint8_t ppu::vram_read(uint16_t addr) {
 
 void ppu::vram_write(uint16_t addr, uint8_t val) {
     vram[addr - 0x8000] = val;
-    if(addr >= 0x9800) {
-        //printf("vram\n");
-        //SDL_Delay(5000);
-    }
 }
 
 void ppu::dma_start(uint8_t val){
@@ -49,13 +43,12 @@ void ppu::dma_tick(){
     dma_byte++;
     dma_active = dma_byte < 0xA0;
 
-    if(!dma_active){
-    }
+
 }
 
 void ppu::tick() {
     dots++;
-    //printf("%i\n",get_mode());
+
     switch(get_mode()) {
         case MODE_OAM:
             oam_mode();
@@ -75,11 +68,6 @@ void ppu::tick() {
 static const int LCD_STAT = 2;
 static const int VBLANK_STAT = 1;
 
-unsigned long prev_frametime = 0;
-unsigned long start_time = 0;
-unsigned long frame_count = 0;
-
-
 void ppu::inc_ly(){
     LCD->ly++;
 
@@ -91,10 +79,6 @@ void ppu::inc_ly(){
         if(stat_int(STAT_LYC)) get_interrupt(LCD_STAT);
     }
     else LCD->stat &= ~(1 << 2);
-}
-
-uint8_t ppu::get_window_line(){
-    return window_line;
 }
 
 void ppu::oam_mode(){
@@ -127,6 +111,10 @@ void ppu::vblank_mode(){
         dots = 0;
     }
 }
+
+unsigned long prev_frametime = 0;
+unsigned long start_time = 0;
+unsigned long frame_count = 0;
 
 void ppu::hblank_mode(){
     if(dots >= 456){

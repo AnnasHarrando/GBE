@@ -1,4 +1,3 @@
-#include <cstdio>
 #include "lcd.h"
 
 uint32_t colors_default[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
@@ -52,7 +51,6 @@ void update_palette(uint8_t val, uint8_t palette){
 
 
 uint8_t lcd_read(uint16_t addr) {
-    //printf("lcdc: %i\n",LCD.stat);
     switch(addr){
         case 0xFF40: return LCD.lcdc;
         case 0xFF41: return LCD.stat;
@@ -70,7 +68,6 @@ uint8_t lcd_read(uint16_t addr) {
 }
 
 void lcd_write(uint16_t addr, uint8_t val) {
-    //printf("lcdc: %i\n",LCD.stat);
     switch(addr){
         case 0xFF40: LCD.lcdc = val; break;
         case 0xFF41: LCD.stat = val; break;

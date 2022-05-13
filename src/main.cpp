@@ -1,4 +1,3 @@
-#include <cstdio>
 #include "emu.h"
 
 int main(int argv, char* args[])

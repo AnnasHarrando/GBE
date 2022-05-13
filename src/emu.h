@@ -8,12 +8,13 @@
 #include <cstdio>
 
 typedef enum {
-    CPU,
     HRAM,
     WRAM,
     VRAM,
+    RAM_BANK,
     OAM,
     CART,
+    CART_BANK,
     IO
 }component;
 

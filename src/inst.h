@@ -1,4 +1,3 @@
-#pragma once
 #include <cstdint>
 
 typedef enum {
@@ -18,7 +17,6 @@ typedef enum {
     HL_SPR,
     D16,
     D8,
-    D16_R,
     MR_D8,
     MR,
     A16_R,
@@ -79,7 +77,6 @@ typedef enum {
     DI,
     EI,
     RST,
-    ERR,
 
 } INST;
 
@@ -100,7 +97,7 @@ typedef struct instruction{
 
 instruction test();
 
-void init();
+void inst_init();
 
 struct instruction *get_instruction(uint8_t opcode);
 

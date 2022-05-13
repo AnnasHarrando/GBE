@@ -7,27 +7,36 @@ SDL_Renderer *renderer;
 SDL_Texture *texture;
 SDL_Surface *surface;
 
-
 SDL_Window *sdlDebugWindow;
 SDL_Renderer *sdlDebugRenderer;
 SDL_Texture *sdlDebugTexture;
 SDL_Surface *debugScreen;
 
-SDL_Window *t_sdlDebugWindow;
-SDL_Renderer *t_sdlDebugRenderer;
-SDL_Texture *t_sdlDebugTexture;
-SDL_Surface *t_debugScreen;
+SDL_Window *BgDebugWindow;
+SDL_Renderer *BgDebugRenderer;
+SDL_Texture *BgDebugTexture;
+SDL_Surface *BgDebugScreen;
 
-SDL_Window *oam_sdlDebugWindow;
-SDL_Renderer *oam_sdlDebugRenderer;
-SDL_Texture *oam_sdlDebugTexture;
-SDL_Surface *oam_debugScreen;
+SDL_Window *OamDebugWindow;
+SDL_Renderer *OamDebugRenderer;
+SDL_Texture *OamDebugTexture;
+SDL_Surface *OamDebugScreen;
+
+SDL_GameController *gamecontroller = nullptr;
 
 static int scale = 4;
 
 void ui_init(){
-    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
     printf("SDL INIT\n");
+
+
+    for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+        if (SDL_IsGameController(i)){
+            gamecontroller = SDL_GameControllerOpen(i);
+            break;
+        }
+    }
 
     SDL_CreateWindowAndRenderer(1024,768,0,&window,&renderer);
 
@@ -59,32 +68,32 @@ void ui_init(){
                                         (32 * 8 * scale) + (64 * scale));
 
     SDL_CreateWindowAndRenderer(32 * 8 * scale, 32 * 8 * scale, 0,
-                                &t_sdlDebugWindow, &t_sdlDebugRenderer);
+                                &BgDebugWindow, &BgDebugRenderer);
 
-    t_debugScreen = SDL_CreateRGBSurface(0, (32 * 8 * scale) + (32 * scale),
+    BgDebugScreen = SDL_CreateRGBSurface(0, (32 * 8 * scale) + (32 * scale),
                                        (32 * 8 * scale) + (64 * scale), 32,
                                        0x00FF0000,
                                        0x0000FF00,
                                        0x000000FF,
                                        0xFF000000);
 
-    t_sdlDebugTexture = SDL_CreateTexture(t_sdlDebugRenderer,
+    BgDebugTexture = SDL_CreateTexture(BgDebugRenderer,
                                         SDL_PIXELFORMAT_ARGB8888,
                                         SDL_TEXTUREACCESS_STREAMING,
                                         (32 * 8 * scale) + (32 * scale),
                                         (32 * 8 * scale) + (64 * scale));
 
     SDL_CreateWindowAndRenderer(16 * 8 * scale, 16 * 8 * scale, 0,
-                                &oam_sdlDebugWindow, &oam_sdlDebugRenderer);
+                                &OamDebugWindow, &OamDebugRenderer);
 
-    oam_debugScreen = SDL_CreateRGBSurface(0, (16 * 8 * scale) + (16 * scale),
+    OamDebugScreen = SDL_CreateRGBSurface(0, (16 * 8 * scale) + (16 * scale),
                                          (16 * 8 * scale) + (16 * scale), 32,
                                          0x00FF0000,
                                          0x0000FF00,
                                          0x000000FF,
                                          0xFF000000);
 
-    oam_sdlDebugTexture = SDL_CreateTexture(oam_sdlDebugRenderer,
+    OamDebugTexture = SDL_CreateTexture(OamDebugRenderer,
                                           SDL_PIXELFORMAT_ARGB8888,
                                           SDL_TEXTUREACCESS_STREAMING,
                                           (16 * 8 * scale) + (16 * scale),
@@ -120,7 +129,7 @@ void display_tile(SDL_Surface *screen, uint16_t startLocation, uint16_t tileNum,
     }
 }
 
-void t_display_tile(SDL_Surface *screen, uint16_t startLocation, int x, int y) {
+void bg_display_tile(SDL_Surface *screen, uint16_t startLocation, int x, int y) {
     SDL_Rect rc;
 
     for (int tileY=0; tileY<16; tileY += 2) {
@@ -196,16 +205,16 @@ void t_update_dbg_window() {
     SDL_Rect rc;
     rc.x = 0;
     rc.y = 0;
-    rc.w = t_debugScreen->w;
-    rc.h = t_debugScreen->h;
-    SDL_FillRect(t_debugScreen, &rc, 0xFF111111);
+    rc.w = BgDebugScreen->w;
+    rc.h = BgDebugScreen->h;
+    SDL_FillRect(BgDebugScreen, &rc, 0xFF111111);
 
 
     //384 tiles, 24 x 16
     for (int y=0; y<64; y++) {
         for (int x=0; x<32; x++) {
             uint16_t tile = 0x8000 + bus_read(0x9800 + x + y*32)*16;
-            t_display_tile(t_debugScreen, tile, xDraw + (x * (scale/2)), yDraw + (y * (scale/2)));
+            bg_display_tile(BgDebugScreen, tile, xDraw + (x * (scale/2)), yDraw + (y * (scale/2)));
             xDraw += (8 * (scale/2));
         }
 
@@ -213,10 +222,10 @@ void t_update_dbg_window() {
         xDraw = 0;
     }
 
-    SDL_UpdateTexture(t_sdlDebugTexture, NULL, t_debugScreen->pixels, t_debugScreen->pitch);
-    SDL_RenderClear(t_sdlDebugRenderer);
-    SDL_RenderCopy(t_sdlDebugRenderer, t_sdlDebugTexture, NULL, NULL);
-    SDL_RenderPresent(t_sdlDebugRenderer);
+    SDL_UpdateTexture(BgDebugTexture, NULL, BgDebugScreen->pixels, BgDebugScreen->pitch);
+    SDL_RenderClear(BgDebugRenderer);
+    SDL_RenderCopy(BgDebugRenderer, BgDebugTexture, NULL, NULL);
+    SDL_RenderPresent(BgDebugRenderer);
 }
 
 void oam_update_dbg_window(uint8_t *val) {
@@ -226,15 +235,15 @@ void oam_update_dbg_window(uint8_t *val) {
     SDL_Rect rc;
     rc.x = 0;
     rc.y = 0;
-    rc.w = oam_debugScreen->w;
-    rc.h = oam_debugScreen->h;
-    SDL_FillRect(oam_debugScreen, &rc, 0xFF111111);
+    rc.w = OamDebugScreen->w;
+    rc.h = OamDebugScreen->h;
+    SDL_FillRect(OamDebugScreen, &rc, 0xFF111111);
 
 
     for (int y=0; y<4; y++) {
         for (int x=0; x<10; x++) {
             uint16_t tile = 0x8000 + val[x + y*10] *16;
-            oam_display_tile(oam_debugScreen, tile, xDraw + (x * (scale)), yDraw + (y * (scale)));
+            oam_display_tile(OamDebugScreen, tile, xDraw + (x * (scale)), yDraw + (y * (scale)));
             xDraw += (8 * (scale));
         }
 
@@ -242,10 +251,10 @@ void oam_update_dbg_window(uint8_t *val) {
         xDraw = 0;
     }
 
-    SDL_UpdateTexture(oam_sdlDebugTexture, NULL, oam_debugScreen->pixels, oam_debugScreen->pitch);
-    SDL_RenderClear(oam_sdlDebugRenderer);
-    SDL_RenderCopy(oam_sdlDebugRenderer, oam_sdlDebugTexture, NULL, NULL);
-    SDL_RenderPresent(oam_sdlDebugRenderer);
+    SDL_UpdateTexture(OamDebugTexture, NULL, OamDebugScreen->pixels, OamDebugScreen->pitch);
+    SDL_RenderClear(OamDebugRenderer);
+    SDL_RenderCopy(OamDebugRenderer, OamDebugTexture, NULL, NULL);
+    SDL_RenderPresent(OamDebugRenderer);
 }
 
 void update_dbg_window() {
@@ -304,6 +313,7 @@ void set_button_type(uint8_t val){
 
 uint8_t get_button_press(){
     uint8_t val = 0b11000000;
+
     if(action_button){
         if(!a) val |= 0b1;
         if(!b) val |= 0b10;
@@ -321,6 +331,7 @@ uint8_t get_button_press(){
 
 bool ui_handle_events(){
     SDL_Event event;
+
     while(SDL_PollEvent(&event)){
         if(event.type == SDL_KEYDOWN){
             switch(event.key.keysym.sym){
@@ -348,6 +359,35 @@ bool ui_handle_events(){
                 case SDLK_p: start_button = false; break;
                 case SDLK_u: select_button = false; break;
             }
+        }
+
+        if(gamecontroller != nullptr) {
+            if (SDL_GameControllerGetButton(gamecontroller, SDL_CONTROLLER_BUTTON_DPAD_UP)) up = true;
+            else up = false;
+
+            if (SDL_GameControllerGetButton(gamecontroller, SDL_CONTROLLER_BUTTON_DPAD_DOWN)) down = true;
+            else down = false;
+
+            if (SDL_GameControllerGetButton(gamecontroller, SDL_CONTROLLER_BUTTON_DPAD_LEFT)) left = true;
+            else left = false;
+
+            if (SDL_GameControllerGetButton(gamecontroller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) right = true;
+            else right = false;
+
+            if (SDL_GameControllerGetButton(gamecontroller, SDL_CONTROLLER_BUTTON_DPAD_UP)) up = true;
+            else up = false;
+
+            if (SDL_GameControllerGetButton(gamecontroller, SDL_CONTROLLER_BUTTON_B)) a = true;
+            else a = false;
+
+            if (SDL_GameControllerGetButton(gamecontroller, SDL_CONTROLLER_BUTTON_A)) b = true;
+            else b = false;
+
+            if (SDL_GameControllerGetButton(gamecontroller, SDL_CONTROLLER_BUTTON_GUIDE)) select_button = true;
+            else select_button = false;
+
+            if (SDL_GameControllerGetButton(gamecontroller, SDL_CONTROLLER_BUTTON_START)) start_button = true;
+            else start_button = false;
         }
 
         if (event.type == SDL_QUIT) {

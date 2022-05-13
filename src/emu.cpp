@@ -15,24 +15,6 @@ ram ram;
 io io;
 ppu ppu;
 bus bus;
-bool running = true;
-
-uint8_t ticks = 0;
-
-char dbg_msg[1024];
-uint16_t msg_size = 0;
-
-void dbg_update() {
-    if (bus_read(0xFF02) == 0x81) {
-        uint8_t c = bus_read(0xFF01);
-        dbg_msg[msg_size] = c;
-        msg_size += 1;
-        bus_write(0xFF02, 0);
-        printf("DBG: %s size:%d\n", dbg_msg,msg_size);
-    }
-
-}
-
 
 
 DWORD WINAPI cpu_run(LPVOID lpParameter)
@@ -40,7 +22,6 @@ DWORD WINAPI cpu_run(LPVOID lpParameter)
 
     while(true){
         cpu.step();
-        dbg_update();
     }
 }
 
@@ -63,9 +44,9 @@ uint8_t get_window_line(){
 
 int start(int argc, char **argv) {
     cart.cart_load(argv[1]);
-    init();
+
+    inst_init();
     fifo_init();
-    ticks = 0;
 
     HANDLE hThread = CreateThread(
             NULL,    // Thread attributes
@@ -77,14 +58,12 @@ int start(int argc, char **argv) {
 
     if (hThread == NULL)
     {
-        // Thread creation failed.
-        // More details can be retrieved by calling GetLastError()
+
         return 1;
     }
 
     ui_init();
-    while(running){
-        running = ui_handle_events();
+    while(ui_handle_events()){
         update_screen(ppu.buffer);
         //update_dbg_window();
         //t_update_dbg_window();
@@ -97,7 +76,9 @@ uint8_t emu_read(uint16_t addr, component comp) {
     switch(comp){
         case WRAM: return ram.wram_read(addr);
         case HRAM: return ram.hram_read(addr);
+        case RAM_BANK: return cart.ram_read(addr);
         case CART: return cart.read(addr);
+        case CART_BANK: return cart.rom_bank_read(addr);
         case IO: return io.read(addr);
         case OAM: return ppu.oam_read(addr);
         case VRAM: return ppu.vram_read(addr);
@@ -120,13 +101,11 @@ void emu_write(uint16_t addr, uint8_t val, component comp) {
 void cycles(uint8_t cycle){
     for(int i=0; i<cycle; i++) {
         for (int j = 0; j < 4; j++) {
-            ticks++;
             tick();
             ppu.tick();
         }
         ppu.dma_tick();
     }
-
 }
 
 uint8_t bus_read(uint16_t addr){

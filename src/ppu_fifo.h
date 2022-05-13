@@ -1,7 +1,3 @@
-//
-// Created by annas on 05/05/2022.
-//
-
 #ifndef GBE_PPU_FIFO_H
 #define GBE_PPU_FIFO_H
 

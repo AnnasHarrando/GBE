@@ -4,7 +4,7 @@
 using namespace std;
 static instruction instructions[0x100];
 
-void init(){
+void inst_init(){
 
     instructions[0x00] =  {NOP};
     instructions[0x01] =  {LD,R_D16,BC};

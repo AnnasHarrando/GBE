@@ -1,10 +1,5 @@
-//
-// Created by annas on 05/05/2022.
-//
-
 #include "ppu_fifo.h"
 #include <algorithm>
-
 
 static ppu PPU;
 static fifo FIFO;
@@ -13,7 +8,7 @@ void init(ppu ppu){
     PPU = ppu;
 }
 
-bool compare(oam left,oam right){ return left.x > right.x;}
+bool compare(oam left,oam right){ return left.x < right.x;}
 
 void fifo_load_sprites(oam sprites[40]) {
     memset(PPU.line_sprites,0,10);
@@ -26,13 +21,13 @@ void fifo_load_sprites(oam sprites[40]) {
 
         oam sprite = sprites[i];
 
-
         if(sprite.x > 0 && (sprite.y <= PPU.LCD->ly + 16 && sprite.y + height > PPU.LCD->ly + 16)){
             PPU.line_sprites[PPU.line_sprites_size] = sprite;
             PPU.line_sprites_size++;
         }
     }
-    //std::sort(PPU.line_sprites,PPU.line_sprites+PPU.line_sprites_size, compare);
+
+    std::sort(PPU.line_sprites,PPU.line_sprites+PPU.line_sprites_size, compare);
 }
 
 void fifo_set_draw(){
@@ -62,7 +57,6 @@ void fifo_draw_pixel(){
         uint32_t temp = fifo_pop();
 
         if(FIFO.line_x >= (PPU.LCD->x_scroll % 8)){
-            //printf("%i\n",FIFO.pushed_x + PPU.LCD->ly * 160);
             PPU.buffer[FIFO.pushed_x + (PPU.LCD->ly * 160)] = temp;
             FIFO.pushed_x++;
         }
@@ -79,7 +73,6 @@ uint32_t get_sprite(uint8_t bit, uint32_t color, uint8_t bg){
         int offset = FIFO.fifo_x - x;
 
         if(x+8 >= FIFO.fifo_x && (offset >= 0 && offset <= 7)){
-            //printf("final\n");
             if(PPU.fetch_entry[i].x_flip) bit = offset;
             else bit = (7 - offset);
 
@@ -95,6 +88,7 @@ uint32_t get_sprite(uint8_t bit, uint32_t color, uint8_t bg){
             }
         }
     }
+
     return temp;
 }
 
@@ -142,7 +136,6 @@ void fifo_load_sprite_data(uint8_t val){
     uint8_t height = get_sprite_height();
 
     for(int i=0; i < PPU.fetch_entry_size; i++){
-        //printf("fetch\n");
         uint8_t y = (PPU.LCD->ly + 16 - PPU.fetch_entry[i].y) * 2;
         if(PPU.fetch_entry[i].y_flip) y = height*2 - 2 - y;
 
@@ -165,8 +158,7 @@ void fifo_load_window(){
     if(window_enabled()) {
         if (window_in_x() && window_in_y()) {
             uint8_t y = get_window_line() / 8;
-           // printf("windowline: %i\n",get_window_line());
-            //printf("addr: %04X tile: %i\n",win_map_loc() + ((FIFO.fetch_x + 7 - PPU.LCD->x_win) / 8) + (y * 32),y);
+
             FIFO.bgw_fetch_data[0] = bus_read(win_map_loc() + ((FIFO.fetch_x + 7 - PPU.LCD->x_win) / 8) + (y * 32));
             if (BGW_data_loc() == 0x8800) FIFO.bgw_fetch_data[0] += 128;
         }

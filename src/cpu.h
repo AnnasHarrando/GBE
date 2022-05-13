@@ -5,8 +5,6 @@
 
 #define BIT_SET(n, on) { if (on) regists.f = regists.f | (1 << n); else regists.f = regists.f & ~(1 << n);}
 
-
-
 typedef struct{
     union {
         struct {
@@ -62,8 +60,6 @@ public:
     bool halt;
     bool ime;
 
-
-
     cpu(){
         regists.af = 0x01B0;
         regists.bc = 0x0013;
@@ -86,24 +82,14 @@ public:
     void push(uint16_t val);
     uint16_t pop();
     void set_flags(int z, int n, int h, int c);
-
-
     uint8_t get_ie_register();
-
     void set_ie_register(uint8_t val);
-
     void set_register(REG regis,uint16_t val);
-
     uint16_t get_register(REG regis);
-
     void check_interrupt();
-
     bool check_int(uint16_t addr, uint8_t interrupt);
-
     void get_interrupt(uint8_t interrupt);
-
     void cb();
-
     void it_push(uint16_t val);
 };
 

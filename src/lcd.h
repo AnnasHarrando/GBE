@@ -9,7 +9,7 @@ typedef struct{
     uint8_t y_scroll = 0;
     uint8_t ly = 0;
     uint8_t lyc = 0;
-    uint8_t oam;
+    uint8_t oam = 0;
     uint8_t bg_palette = 0xFC;
     uint8_t palette_1 = 0xFF;
     uint8_t palette_2 = 0xFF;
