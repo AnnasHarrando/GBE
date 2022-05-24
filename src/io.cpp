@@ -18,6 +18,7 @@ void io::write(uint16_t addr, uint8_t val) {
     if(addr == 0xFF02) serial_data[1] = val;
     if((addr >= 0xFF04) && (addr <= 0xFF07)) timer_write(addr,val);
     if(addr == 0xFF0F) set_int_flags(val);
+    if(addr == 0xFF16) play(val & 0b111111);
     if((addr >= 0xFF40) && (addr <= 0xFF4B)) lcd_write(addr,val);
     if(addr == 0xFF46) dma_start(val);
 

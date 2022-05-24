@@ -1,6 +1,6 @@
 #include "timer.h"
 
-static uint16_t Div = 0xAC00;
+static uint16_t Div = 0;
 static uint8_t tima;
 static uint8_t tma;
 static uint8_t tac;
@@ -60,7 +60,7 @@ void timer_write(uint16_t addr, uint8_t val){
 uint8_t timer_read(uint16_t address) {
     switch(address) {
         case 0xFF04:
-            return Div >> 8;
+            return Div & 0xFF;
         case 0xFF05:
             return tima;
         case 0xFF06:

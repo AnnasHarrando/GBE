@@ -4,7 +4,6 @@
 #include "SDL.h"
 #include "screen.h"
 #include <windows.h>
-#include <thread>
 #include <cstdio>
 
 typedef enum {
@@ -32,8 +31,7 @@ void set_int_flags(uint8_t val);
 void dma_start(uint8_t val);
 void fifo_init();
 
-uint8_t get_window_line();
-
+bool oam_mode();
 void cycles(uint8_t cycle);
 
 #endif //GBE_BUS_H

@@ -6,6 +6,7 @@
 #include "ppu.h"
 #include "bus.h"
 #include "ppu_fifo.h"
+#include "audio.h"
 
 using namespace std;
 
@@ -21,12 +22,17 @@ DWORD WINAPI cpu_run(LPVOID lpParameter)
 {
 
     while(true){
-        cpu.step();
+        if(get_running()) cpu.step();
     }
 }
 
+
 void fifo_init(){
-    init(ppu);
+    init(&ppu);
+}
+
+bool oam_mode(){
+    return get_mode() == MODE_DRAW;
 }
 
 
@@ -38,15 +44,12 @@ uint8_t *get_oam_tiles(){
     return temp;
 }
 
-uint8_t get_window_line(){
-    return ppu.window_line;
-}
-
 int start(int argc, char **argv) {
-    cart.cart_load(argv[1]);
+    cart.load_rom(argv[1]);
 
     inst_init();
     fifo_init();
+    audio_init();
 
     HANDLE hThread = CreateThread(
             NULL,    // Thread attributes
@@ -65,9 +68,11 @@ int start(int argc, char **argv) {
     ui_init();
     while(ui_handle_events()){
         update_screen(ppu.buffer);
-        //update_dbg_window();
-        //t_update_dbg_window();
-        //oam_update_dbg_window(get_oam_tiles());
+#if false
+        update_dbg_window();
+        t_update_dbg_window();
+        oam_update_dbg_window(get_oam_tiles());
+#endif
 
     }
 }
@@ -90,13 +95,16 @@ void emu_write(uint16_t addr, uint8_t val, component comp) {
     switch(comp){
         case WRAM:ram.wram_write(addr,val); break;
         case HRAM: ram.hram_write(addr,val); break;
+        case RAM_BANK: cart.ram_write(addr, val); break;
         case CART: cart.write(addr,val); break;
+        case CART_BANK: cart.rom_bank_write(addr, val); break;
         case IO: io.write(addr,val); break;
         case OAM: ppu.oam_write(addr,val); break;
         case VRAM: ppu.vram_write(addr,val); break;
         default: break;
     }
 }
+
 
 void cycles(uint8_t cycle){
     for(int i=0; i<cycle; i++) {
@@ -105,6 +113,9 @@ void cycles(uint8_t cycle){
             ppu.tick();
         }
         ppu.dma_tick();
+    }
+    for(int i=0; i<1; i++){
+        //timing
     }
 }
 

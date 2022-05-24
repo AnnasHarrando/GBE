@@ -4,6 +4,7 @@
 #include <cstdint>
 #include "timer.h"
 #include "lcd.h"
+#include "audio.h"
 
 class io {
 public:

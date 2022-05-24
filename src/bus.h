@@ -1,7 +1,7 @@
 #ifndef GBE_BUS_H
 #define GBE_BUS_H
 
-#include "emu.h"
+#include <cstdint>
 
 class bus {
 public:
@@ -9,6 +9,8 @@ public:
     void write(uint16_t addr, uint8_t val);
 
 };
+
+void set_objects();
 
 
 #endif //GBE_BUS_H

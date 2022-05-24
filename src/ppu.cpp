@@ -69,10 +69,10 @@ static const int LCD_STAT = 2;
 static const int VBLANK_STAT = 1;
 
 void ppu::inc_ly(){
-    LCD->ly++;
 
     if(window_enabled() && LCD->ly >= LCD->y_win && LCD->ly < LCD->y_win + 144) window_line++;
-
+    fifo_window_start();
+    LCD->ly++;
 
     if(LCD->ly == LCD->lyc){
         LCD->stat |= (1 << 2);
@@ -86,7 +86,7 @@ void ppu::oam_mode(){
         lcds_set(MODE_DRAW);
         fifo_set_draw();
     }
-    if(dots == 1) fifo_load_sprites(oam_ram);
+    if(dots == 79) fifo_load_sprites();
 }
 
 void ppu::draw_mode(){
@@ -107,6 +107,7 @@ void ppu::vblank_mode(){
             lcds_set(MODE_OAM);
             LCD->ly = 0;
             window_line = 0;
+            if(stat_int(STAT_OAM)) get_interrupt(LCD_STAT);
         }
         dots = 0;
     }
@@ -125,7 +126,9 @@ void ppu::hblank_mode(){
             get_interrupt(VBLANK_STAT);
 
             if(stat_int(STAT_VBLANK)) get_interrupt(LCD_STAT);
+            if(stat_int(STAT_OAM)) get_interrupt(LCD_STAT);
 
+/*
             cur_frame++;
 
             uint32_t end_time = SDL_GetTicks();
@@ -143,8 +146,12 @@ void ppu::hblank_mode(){
 
             frame_count++;
             prev_frametime = SDL_GetTicks();
+            */
         }
-        else lcds_set(MODE_OAM);
+        else {
+            lcds_set(MODE_OAM);
+            //if(stat_int(STAT_OAM)) get_interrupt(LCD_STAT);
+        }
 
         dots = 0;
     }

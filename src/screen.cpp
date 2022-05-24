@@ -1,6 +1,7 @@
 #include <cstdio>
 #include "screen.h"
 #include "emu.h"
+#include "lcd.h"
 
 SDL_Window *window;
 SDL_Renderer *renderer;
@@ -50,9 +51,10 @@ void ui_init(){
                                    SDL_PIXELFORMAT_ARGB8888,
                                    SDL_TEXTUREACCESS_STREAMING,
                                 1024, 768);
-/*
+#if false
     SDL_CreateWindowAndRenderer(16 * 8 * scale, 32 * 8 * scale, 0,
                                 &sdlDebugWindow, &sdlDebugRenderer);
+
 
     debugScreen = SDL_CreateRGBSurface(0, (16 * 8 * scale) + (16 * scale),
                                        (32 * 8 * scale) + (64 * scale), 32,
@@ -98,7 +100,7 @@ void ui_init(){
                                           SDL_TEXTUREACCESS_STREAMING,
                                           (16 * 8 * scale) + (16 * scale),
                                           (16 * 8 * scale) + (16 * scale));
-*/
+#endif
     int x, y;
     SDL_GetWindowPosition(window, &x, &y);
     SDL_SetWindowPosition(sdlDebugWindow, x + 1024 + 10, y);
@@ -197,6 +199,7 @@ void update_screen(uint32_t *buffer){
     SDL_RenderPresent(renderer);
 }
 
+bool bg_mode = true;
 
 void t_update_dbg_window() {
     int xDraw = 0;
@@ -210,10 +213,15 @@ void t_update_dbg_window() {
     SDL_FillRect(BgDebugScreen, &rc, 0xFF111111);
 
 
-    //384 tiles, 24 x 16
     for (int y=0; y<64; y++) {
         for (int x=0; x<32; x++) {
-            uint16_t tile = 0x8000 + bus_read(0x9800 + x + y*32)*16;
+            uint8_t index = bus_read(0x9800 + x + y*32);
+            uint16_t tile;
+            if(bg_mode) tile = 0x8000 + index*16;
+            else{
+                index += 128;
+                tile = 0x8800 + index*16;
+            }
             bg_display_tile(BgDebugScreen, tile, xDraw + (x * (scale/2)), yDraw + (y * (scale/2)));
             xDraw += (8 * (scale/2));
         }
@@ -271,7 +279,6 @@ void update_dbg_window() {
 
     uint16_t addr = 0x8000;
 
-    //384 tiles, 24 x 16
     for (int y=0; y<24; y++) {
         for (int x=0; x<16; x++) {
             display_tile(debugScreen, addr, tileNum, xDraw + (x * scale), yDraw + (y * scale));
@@ -300,7 +307,14 @@ bool up;
 bool down;
 bool left;
 bool right;
+
+bool running = true;
+
 uint32_t fps = 1000/60;
+
+bool get_running(){
+    return running;
+}
 
 uint32_t get_fps(){
     return fps;
@@ -341,11 +355,13 @@ bool ui_handle_events(){
                 case SDLK_d: right = true; break;
                 case SDLK_l: a = true; break;
                 case SDLK_k: b = true; break;
-                case SDLK_p: start_button = true; break;
+                case SDLK_p: start_button = true; printf("start"); break;
                 case SDLK_u: select_button = true; break;
                 case SDLK_1: fps = 1000/60; break;
                 case SDLK_2: fps = 500/60; break;
                 case SDLK_3: fps = 125/60; break;
+                case SDLK_SPACE: running = !running; break;
+                case SDLK_LALT: bg_mode = !bg_mode; break;
             }
         }
         if(event.type == SDL_KEYUP){

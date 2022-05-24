@@ -1,4 +1,9 @@
 #include "bus.h"
+#include "emu.h"
+#include "cart.h"
+
+static cart *cart;
+
 
 uint8_t bus::read(uint16_t addr) {
         if (addr < 0x4000) {
@@ -8,6 +13,7 @@ uint8_t bus::read(uint16_t addr) {
             return emu_read(addr,CART_BANK);
         }
         else if (addr < 0xA000) {
+            //if(oam_mode()) return 0xFF;
             return emu_read(addr,VRAM);
         }
         else if (addr < 0xC000) {
@@ -48,9 +54,10 @@ void bus::write(uint16_t addr, uint8_t val) {
         emu_write(addr, val,CART);
     }
     if (addr < 0x8000) {
-        //emu_write(addr, val, CART_BANK);
+        emu_write(addr, val, CART_BANK);
     }
     else if (addr < 0xA000) {
+        //if(oam_mode()) return;
         emu_write(addr, val,VRAM);
     }
     else if (addr < 0xC000) {

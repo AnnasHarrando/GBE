@@ -8,14 +8,14 @@ using namespace std;
 void cpu::step(){
 
     if(!halt) {
-        //uint16_t cur_pc = pc;
+        uint16_t cur_pc = pc;
 
         opcode = bus_read(pc++);
         cur_inst = get_instruction(opcode);
         cycles(1);
 
             //printf("%04X: %-7s (%02X %02X %02X)\n", cur_pc, inst_name(cur_inst->type), opcode, bus_read(pc),
-            //       bus_read(pc + 1));
+            //      bus_read(pc + 1));
             //printf("AF: %04X, BC: %04X, DE: %04X, HL: %04X SP:%04X\n", get_register(AF),get_register(BC),get_register(DE),get_register(HL),get_register(SP));
 
         load_in_mem = 0;
@@ -23,6 +23,7 @@ void cpu::step(){
         exec();
     }
     else{
+
         cycles(1);
 
         if(int_flags){
@@ -410,37 +411,42 @@ void cpu::it_push(uint16_t val){
 void cpu::push(uint16_t val){
     regists.sp--;
     bus_write(regists.sp,val >> 8);
+    cycles(1);
     regists.sp--;
     bus_write(regists.sp,val & 0xFF);
-    cycles(2);
+    cycles(1);
+    //printf("low: %02X high: %02X\n",val & 0xFF,val >> 8);
 }
 
 uint16_t cpu::pop(){
     uint8_t low = bus_read(regists.sp);
     regists.sp++;
+    cycles(1);
     uint8_t high = bus_read(regists.sp);
     regists.sp++;
-    cycles(2);
+    cycles(1);
 
     return low | (high << 8);
 }
 
 void cpu::check_interrupt(){
-    if (check_int(0x40, 1)){
+    if(check_int(0x40, 1)){
 
     }
-    else if (check_int(0x48, 2)){
+    else if(check_int(0x48, 2)){
 
     }
-    else if (check_int(0x50, 4)){
+    else if(check_int(0x50, 4)){
 
     }
-    else if (check_int(0x58, 8)){
+    else if(check_int(0x58, 8)){
 
     }
-    else if (check_int(0x60, 16)){
+    else if(check_int(0x60, 16)){
 
     }
+
+
 }
 
 bool cpu::check_int(uint16_t addr, uint8_t interrupt){
