@@ -2,7 +2,6 @@
 #define PPU_H
 
 #include <cstdint>
-#include "lcd.h"
 #include <cstdlib>
 
 typedef struct{
@@ -20,7 +19,6 @@ typedef struct{
 
 class ppu {
 public:
-    lcd *LCD = get_lcd();
 
     oam oam_ram[40] = {0};
     uint8_t vram[0x2000] = {0};
@@ -60,5 +58,7 @@ public:
 
     void inc_ly();
 };
+
+void ppu_init();
 
 #endif

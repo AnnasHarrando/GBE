@@ -1,13 +1,27 @@
 #include "io.h"
+#include "emu.h"
 #include "screen.h"
+
+static ppu *ppu;
+static cpu *cpu;
+static timer *timer;
+static lcd *lcd;
+
+
+void io_init(){
+    cpu = get_cpu();
+    ppu = get_ppu();
+    timer = get_timer();
+    lcd = get_lcd();
+}
 
 uint8_t io::read(uint16_t addr) {
     if(addr == 0xFF00) return get_button_press();
     if(addr == 0xFF01) return serial_data[0];
     if(addr == 0xFF02) return serial_data[1];
-    if((addr >= 0xFF04) && (addr <= 0xFF07)) return timer_read(addr);
-    if(addr == 0xFF0F) return get_int_flags();
-    if((addr >= 0xFF40) && (addr <= 0xFF4B)) return lcd_read(addr);
+    if((addr >= 0xFF04) && (addr <= 0xFF07)) return timer->read(addr);
+    if(addr == 0xFF0F) return cpu->int_flags;
+    if((addr >= 0xFF40) && (addr <= 0xFF4B)) return lcd->read(addr);
 
     return 0;
 }
@@ -16,10 +30,10 @@ void io::write(uint16_t addr, uint8_t val) {
     if(addr == 0xFF00) set_button_type(val);
     if(addr == 0xFF01) serial_data[0] = val;
     if(addr == 0xFF02) serial_data[1] = val;
-    if((addr >= 0xFF04) && (addr <= 0xFF07)) timer_write(addr,val);
-    if(addr == 0xFF0F) set_int_flags(val);
+    if((addr >= 0xFF04) && (addr <= 0xFF07)) timer->write(addr,val);
+    if(addr == 0xFF0F) cpu->int_flags = val;
     if(addr == 0xFF16) play(val & 0b111111);
-    if((addr >= 0xFF40) && (addr <= 0xFF4B)) lcd_write(addr,val);
-    if(addr == 0xFF46) dma_start(val);
+    if((addr >= 0xFF40) && (addr <= 0xFF4B)) lcd->write(addr,val);
+    if(addr == 0xFF46) ppu->dma_start(val);
 
 }

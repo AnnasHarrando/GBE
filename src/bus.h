@@ -10,7 +10,7 @@ public:
 
 };
 
-void set_objects();
+void bus_init();
 
 
 #endif //GBE_BUS_H

@@ -1,3 +1,7 @@
+#ifndef GBE_INST_H
+#define GBE_INST_H
+
+
 #include <cstdint>
 
 typedef enum {
@@ -102,3 +106,5 @@ void inst_init();
 struct instruction *get_instruction(uint8_t opcode);
 
 char *inst_name(INST t);
+
+#endif GBE_INST_H

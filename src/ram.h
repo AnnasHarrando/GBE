@@ -1,3 +1,7 @@
+#ifndef GBE_RAM_H
+#define GBE_RAM_H
+
+
 #include <cstdint>
 
 class ram{
@@ -11,3 +15,6 @@ public:
     uint8_t hram_read(uint16_t address);
     void hram_write(uint16_t address, uint8_t value);
 };
+
+
+#endif GBE_RAM_H

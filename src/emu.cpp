@@ -1,71 +1,42 @@
 #include "emu.h"
-#include "cpu.h"
-#include "cart.h"
-#include "ram.h"
-#include "io.h"
-#include "ppu.h"
-#include "bus.h"
-#include "ppu_fifo.h"
-#include "audio.h"
 
 using namespace std;
 
-cpu cpu;
-cart cart;
-ram ram;
-io io;
-ppu ppu;
-bus bus;
+static cpu cpu;
+static cart cart;
+static ram ram;
+static io io;
+static ppu ppu;
+static bus bus;
+static timer timer;
+static lcd lcd;
+static ppu_fifo ppu_fifo;
+
+void save_states();
+void load_states();
+void init_objects();
+DWORD WINAPI cpu_run(LPVOID lpParameter);
 
 
-DWORD WINAPI cpu_run(LPVOID lpParameter)
-{
-
-    while(true){
-        if(get_running()) cpu.step();
-    }
-}
-
-
-void fifo_init(){
-    init(&ppu);
-}
-
-bool oam_mode(){
-    return get_mode() == MODE_DRAW;
-}
-
-
-uint8_t *get_oam_tiles(){
-    uint8_t *temp = static_cast<uint8_t *>(malloc(40));
-    for(int i=0; i<40; i++){
-        temp[i] = ppu.oam_ram[i].tile;
-    }
-    return temp;
-}
-
-int start(int argc, char **argv) {
+int start(char **argv) {
     cart.load_rom(argv[1]);
 
-    inst_init();
-    fifo_init();
-    audio_init();
+    init_objects();
 
     HANDLE hThread = CreateThread(
-            NULL,    // Thread attributes
+            nullptr,    // Thread attributes
             0,       // Stack size (0 = use default)
             cpu_run, // Thread start address
-            NULL,    // Parameter to pass to the thread
+            nullptr,    // Parameter to pass to the thread
             0,       // Creation flags
-            NULL);
+            nullptr);
 
-    if (hThread == NULL)
+    if (hThread == nullptr)
     {
-
+        printf("Thread initialization failed.\n");
         return 1;
     }
 
-    ui_init();
     while(ui_handle_events()){
         update_screen(ppu.buffer);
 #if false
@@ -77,45 +48,37 @@ int start(int argc, char **argv) {
     }
 }
 
-uint8_t emu_read(uint16_t addr, component comp) {
-    switch(comp){
-        case WRAM: return ram.wram_read(addr);
-        case HRAM: return ram.hram_read(addr);
-        case RAM_BANK: return cart.ram_read(addr);
-        case CART: return cart.read(addr);
-        case CART_BANK: return cart.rom_bank_read(addr);
-        case IO: return io.read(addr);
-        case OAM: return ppu.oam_read(addr);
-        case VRAM: return ppu.vram_read(addr);
-        default: break;
-    }
-}
-
-void emu_write(uint16_t addr, uint8_t val, component comp) {
-    switch(comp){
-        case WRAM:ram.wram_write(addr,val); break;
-        case HRAM: ram.hram_write(addr,val); break;
-        case RAM_BANK: cart.ram_write(addr, val); break;
-        case CART: cart.write(addr,val); break;
-        case CART_BANK: cart.rom_bank_write(addr, val); break;
-        case IO: io.write(addr,val); break;
-        case OAM: ppu.oam_write(addr,val); break;
-        case VRAM: ppu.vram_write(addr,val); break;
-        default: break;
-    }
-}
-
-
 void cycles(uint8_t cycle){
     for(int i=0; i<cycle; i++) {
+
         for (int j = 0; j < 4; j++) {
-            tick();
+
+            timer.tick();
             ppu.tick();
         }
+
         ppu.dma_tick();
     }
-    for(int i=0; i<1; i++){
+
+    for(int i=0; i<0; i++){
         //timing
+    }
+}
+
+DWORD WINAPI cpu_run(LPVOID lpParameter)
+{
+
+    while(true){
+        if(get_running()) cpu.step();
+
+        if(save_state()) {
+            printf("saving\n");
+            save_states();
+        }
+        if(load_state()){
+            printf("loading\n");
+            load_states();
+        }
     }
 }
 
@@ -123,34 +86,67 @@ uint8_t bus_read(uint16_t addr){
     return bus.read(addr);
 }
 
-void bus_write(uint16_t addr, uint8_t val){
-    bus.write(addr,val);
-};
+class cpu saved_cpu;
+class cart saved_cart;
+class ram saved_ram;
+class io saved_io;
+class ppu saved_ppu;
+class bus saved_bus;
+class timer saved_timer;
+class lcd saved_lcd;
+class ppu_fifo saved_ppu_fifo;
 
-bool dma_active(){
-    return ppu.dma_active;
+
+class cart *get_cart() { return &cart;}
+class io *get_io() { return &io;}
+class ram *get_ram() { return &ram;}
+class ppu *get_ppu() { return &ppu;}
+class cpu *get_cpu() { return &cpu;}
+class bus *get_bus() { return &bus;}
+class timer *get_timer() { return &timer;}
+class lcd *get_lcd() { return &lcd;}
+class ppu_fifo *get_ppu_fifo() { return &ppu_fifo;}
+
+void save_states(){
+    saved_bus = bus;
+    saved_cart = cart;
+    saved_cpu = cpu;
+    saved_io = io;
+    saved_lcd = lcd;
+    saved_ppu = ppu;
+    saved_ppu_fifo = ppu_fifo;
+    saved_ram = ram;
+    saved_timer = timer;
 }
 
-void set_ie_register(uint8_t val){
-    cpu.set_ie_register(val);
+void load_states(){
+    bus = saved_bus;
+    cart = saved_cart;
+    cpu = saved_cpu;
+    io = saved_io;
+    lcd = saved_lcd;
+    ppu = saved_ppu;
+    ppu_fifo = saved_ppu_fifo;
+    ram = saved_ram;
+    timer = saved_timer;
 }
 
-uint8_t get_ie_register(){
-    return cpu.get_ie_register();
+void init_objects(){
+    inst_init();
+    fifo_init();
+    audio_init();
+    bus_init();
+    cpu_init();
+    io_init();
+    ppu_init();
+    timer_init();
+    ui_init();
 }
 
-uint8_t get_int_flags(){
-    return cpu.int_flags;
-}
-
-void set_int_flags(uint8_t val){
-    cpu.int_flags = val;
-}
-
-void get_interrupt(uint8_t val){
-    cpu.get_interrupt(val);
-}
-
-void dma_start(uint8_t val){
-    ppu.dma_start(val);
+uint8_t *get_oam_tiles(){
+    uint8_t *temp = static_cast<uint8_t *>(malloc(40));
+    for(int i=0; i<40; i++){
+        temp[i] = ppu.oam_ram[i].tile;
+    }
+    return temp;
 }

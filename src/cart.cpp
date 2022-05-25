@@ -26,7 +26,7 @@ void cart::rom_bank_write(uint16_t addr, uint8_t val) {
         cur_ram_bank_val = val & 0b11;
         if(ram_bank_enabled) {
             cur_ram_bank = ram_banks + (0x2000 * cur_ram_bank_val);
-            printf("ram changed: %i\n",cur_ram_bank_val);
+            //printf("ram changed: %i\n",cur_ram_bank_val);
             //if(battery_enabled) battery_save();
         }
     }

@@ -15,4 +15,5 @@ public:
 
 };
 
+void io_init();
 #endif

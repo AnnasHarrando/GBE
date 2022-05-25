@@ -29,7 +29,6 @@ static int scale = 4;
 
 void ui_init(){
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
-    printf("SDL INIT\n");
 
 
     for (int i = 0; i < SDL_NumJoysticks(); ++i) {
@@ -107,6 +106,8 @@ void ui_init(){
 }
 
 static unsigned long tile_colors[4] = {0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000};
+
+
 
 void display_tile(SDL_Surface *screen, uint16_t startLocation, uint16_t tileNum, int x, int y) {
     SDL_Rect rc;
@@ -343,6 +344,17 @@ uint8_t get_button_press(){
     return val;
 }
 
+bool save = false;
+bool load = false;
+
+bool save_state(){
+    return save;
+}
+
+bool load_state(){
+    return load;
+}
+
 bool ui_handle_events(){
     SDL_Event event;
 
@@ -355,13 +367,15 @@ bool ui_handle_events(){
                 case SDLK_d: right = true; break;
                 case SDLK_l: a = true; break;
                 case SDLK_k: b = true; break;
-                case SDLK_p: start_button = true; printf("start"); break;
+                case SDLK_p: start_button = true; break;
                 case SDLK_u: select_button = true; break;
                 case SDLK_1: fps = 1000/60; break;
                 case SDLK_2: fps = 500/60; break;
                 case SDLK_3: fps = 125/60; break;
                 case SDLK_SPACE: running = !running; break;
                 case SDLK_LALT: bg_mode = !bg_mode; break;
+                case SDLK_COMMA: save = true; break;
+                case SDLK_m: load = true; break;
             }
         }
         if(event.type == SDL_KEYUP){
@@ -374,6 +388,8 @@ bool ui_handle_events(){
                 case SDLK_k: b = false; break;
                 case SDLK_p: start_button = false; break;
                 case SDLK_u: select_button = false; break;
+                case SDLK_COMMA: save = false; break;
+                case SDLK_m: load = false; break;
             }
         }
 

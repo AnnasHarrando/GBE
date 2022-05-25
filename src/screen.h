@@ -1,3 +1,7 @@
+#ifndef GBE_SCREEN_H
+#define GBE_SCREEN_H
+
+
 #include "SDL.h"
 
 
@@ -11,4 +15,8 @@ void set_button_type(uint8_t val);
 uint8_t get_button_press();
 uint32_t get_fps();
 
+bool save_state();
+bool load_state();
 bool get_running();
+
+#endif GBE_SCREEN_H

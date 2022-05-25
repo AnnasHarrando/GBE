@@ -1,3 +1,6 @@
+#ifndef GBE_CART_H
+#define GBE_CART_H
+
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -26,10 +29,10 @@ public:
         char fn[1048];
         sprintf(fn, "%s.battery", filename);
         FILE *fp = fopen(fn, "rb");
-        printf("trying to load\n");
+        //printf("trying to load\n");
 
         if(fp){
-            printf("loaded\n");
+            //printf("loaded\n");
             fread(ram_banks, ram_size, 1, fp);
             fclose(fp);
         }
@@ -41,7 +44,7 @@ public:
         FILE *fp = fopen(fn, "wb");
 
         if(fp){
-            printf("saved\n");
+            //printf("saved\n");
             fwrite(ram_banks, ram_size, 1, fp);
             fclose(fp);
         }
@@ -61,13 +64,13 @@ public:
         rom_size = ftell(fp);
 
         rewind(fp);
-        printf("rom size: %08X",rom_size);
+        //printf("rom size: %08X",rom_size);
 
         rom_data = (uint8_t *)(malloc(rom_size));
         fread(rom_data, rom_size, 1, fp);
         fclose(fp);
 
-        printf("Cartridge Loaded:\n");
+        //printf("Cartridge Loaded:\n");
 
         cart_type = rom_data[0x0147];
         cur_rom_bank = rom_data + 0x4000;
@@ -106,3 +109,5 @@ public:
     uint8_t ram_read(uint16_t address);
     void ram_write(uint16_t address, uint8_t value);
 };
+
+#endif GBE_CART_H

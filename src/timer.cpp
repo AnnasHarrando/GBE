@@ -1,11 +1,13 @@
 #include "timer.h"
+#include "emu.h"
 
-static uint16_t Div = 0;
-static uint8_t tima;
-static uint8_t tma;
-static uint8_t tac;
+class cpu *cpu;
 
-void tick() {
+void timer_init(){
+    cpu = get_cpu();
+}
+
+void timer::tick() {
     uint16_t prev_div = Div;
 
     Div++;
@@ -33,12 +35,27 @@ void tick() {
         if (tima == 0xFF) {
             tima = tma;
 
-            get_interrupt(4);
+            cpu->get_interrupt(4);
         }
     }
 }
 
-void timer_write(uint16_t addr, uint8_t val){
+uint8_t timer::read(uint16_t address) {
+    switch(address) {
+        case 0xFF04:
+            return Div & 0xFF;
+        case 0xFF05:
+            return tima;
+        case 0xFF06:
+            return tma;
+        case 0xFF07:
+            return tac;
+        default:
+            break;
+    }
+}
+
+void timer::write(uint16_t addr, uint8_t val) {
     switch(addr) {
         case 0xFF04:
             Div = 0;
@@ -52,21 +69,6 @@ void timer_write(uint16_t addr, uint8_t val){
         case 0xFF07:
             tac = val;
             break;
-        default:
-            break;
-    }
-}
-
-uint8_t timer_read(uint16_t address) {
-    switch(address) {
-        case 0xFF04:
-            return Div & 0xFF;
-        case 0xFF05:
-            return tima;
-        case 0xFF06:
-            return tma;
-        case 0xFF07:
-            return tac;
         default:
             break;
     }

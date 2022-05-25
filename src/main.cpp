@@ -2,6 +2,7 @@
 
 int main(int argv, char* args[])
 {
-    start(argv, args);
+    if(argv > 1) start(args);
+    printf("No file path to load in. \n");
     return 0;
 }

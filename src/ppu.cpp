@@ -2,6 +2,17 @@
 #include "emu.h"
 #include "ppu_fifo.h"
 
+static lcd *lcd;
+static ppu_fifo *ppu_fifo;
+static bus *bus;
+static cpu *cpu;
+
+void ppu_init(){
+    lcd = get_lcd();
+    ppu_fifo = get_ppu_fifo();
+    bus = get_bus();
+    cpu = get_cpu();
+}
 
 uint8_t ppu::oam_read(uint16_t addr) {
     if(addr >= 0xFE00) addr -= 0xFE00;
@@ -39,7 +50,7 @@ void ppu::dma_tick(){
         dma_delay--;
         return;
     }
-    oam_write(dma_byte, bus_read((dma_val * 0x100) + dma_byte));
+    oam_write(dma_byte, bus->read((dma_val * 0x100) + dma_byte));
     dma_byte++;
     dma_active = dma_byte < 0xA0;
 
@@ -49,7 +60,7 @@ void ppu::dma_tick(){
 void ppu::tick() {
     dots++;
 
-    switch(get_mode()) {
+    switch(lcd->get_mode()) {
         case MODE_OAM:
             oam_mode();
             break;
@@ -70,87 +81,66 @@ static const int VBLANK_STAT = 1;
 
 void ppu::inc_ly(){
 
-    if(window_enabled() && LCD->ly >= LCD->y_win && LCD->ly < LCD->y_win + 144) window_line++;
-    fifo_window_start();
-    LCD->ly++;
+    if(lcd->window_enabled() && lcd->ly >= lcd->y_win && lcd->ly < lcd->y_win + 144) window_line++;
 
-    if(LCD->ly == LCD->lyc){
-        LCD->stat |= (1 << 2);
-        if(stat_int(STAT_LYC)) get_interrupt(LCD_STAT);
+    lcd->ly++;
+
+    if(lcd->ly == lcd->lyc){
+        lcd->stat |= (1 << 2);
+        if(lcd->stat_int(STAT_LYC)) cpu->get_interrupt(LCD_STAT);
     }
-    else LCD->stat &= ~(1 << 2);
+    else lcd->stat &= ~(1 << 2);
 }
 
 void ppu::oam_mode(){
     if(dots >= 80){
-        lcds_set(MODE_DRAW);
-        fifo_set_draw();
+        lcd->lcds_set(MODE_DRAW);
+        ppu_fifo->set_draw();
     }
-    if(dots == 79) fifo_load_sprites();
+    if(dots == 79) ppu_fifo->load_sprites();
 }
 
 void ppu::draw_mode(){
-    fifo_proc();
+    ppu_fifo->proc();
 
-    if(drawing_stopped()){
-        fifo_reset();
-        lcds_set(MODE_HBLANK);
+    if(ppu_fifo->drawing_stopped()){
+        ppu_fifo->reset();
+        lcd->lcds_set(MODE_HBLANK);
 
-        if(stat_int(STAT_HBLANK)) get_interrupt(LCD_STAT);
+        if(lcd->stat_int(STAT_HBLANK)) cpu->get_interrupt(LCD_STAT);
     }
 }
 
 void ppu::vblank_mode(){
     if(dots >= 456){
+
         inc_ly();
-        if(LCD->ly >= 154){
-            lcds_set(MODE_OAM);
-            LCD->ly = 0;
+
+        if(lcd->ly >= 154){
+            lcd->lcds_set(MODE_OAM);
+            lcd->ly = 0;
             window_line = 0;
-            if(stat_int(STAT_OAM)) get_interrupt(LCD_STAT);
+            if(lcd->stat_int(STAT_OAM)) cpu->get_interrupt(LCD_STAT);
         }
+
         dots = 0;
     }
 }
-
-unsigned long prev_frametime = 0;
-unsigned long start_time = 0;
-unsigned long frame_count = 0;
 
 void ppu::hblank_mode(){
     if(dots >= 456){
         inc_ly();
 
-        if(LCD->ly >= 144){
-            lcds_set(MODE_VBLANK);
-            get_interrupt(VBLANK_STAT);
+        if(lcd->ly >= 144){
+            lcd->lcds_set(MODE_VBLANK);
+            cpu->get_interrupt(VBLANK_STAT);
 
-            if(stat_int(STAT_VBLANK)) get_interrupt(LCD_STAT);
-            if(stat_int(STAT_OAM)) get_interrupt(LCD_STAT);
+            if(lcd->stat_int(STAT_VBLANK)) cpu->get_interrupt(LCD_STAT);
+            if(lcd->stat_int(STAT_OAM)) cpu->get_interrupt(LCD_STAT);
 
-/*
-            cur_frame++;
-
-            uint32_t end_time = SDL_GetTicks();
-            if(end_time - prev_frametime < get_fps()){
-                SDL_Delay(get_fps()-(end_time - prev_frametime));
-            }
-
-            if (end_time - start_time >= 1000) {
-                uint32_t temp = frame_count;
-                start_time = end_time;
-                frame_count = 0;
-
-                printf("FPS: %d\n", temp);
-            }
-
-            frame_count++;
-            prev_frametime = SDL_GetTicks();
-            */
         }
         else {
-            lcds_set(MODE_OAM);
-            //if(stat_int(STAT_OAM)) get_interrupt(LCD_STAT);
+            lcd->lcds_set(MODE_OAM);
         }
 
         dots = 0;

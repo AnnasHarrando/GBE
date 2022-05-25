@@ -2,37 +2,34 @@
 #define GBE_EMU_H
 
 #include "SDL.h"
+#include "cpu.h"
+#include "cart.h"
+#include "ram.h"
+#include "io.h"
+#include "ppu.h"
+#include "bus.h"
+#include "ppu_fifo.h"
+#include "audio.h"
 #include "screen.h"
+#include "lcd.h"
 #include <windows.h>
 #include <cstdio>
 
-typedef enum {
-    HRAM,
-    WRAM,
-    VRAM,
-    RAM_BANK,
-    OAM,
-    CART,
-    CART_BANK,
-    IO
-}component;
 
-uint8_t emu_read(uint16_t addr, component comp);
-void emu_write(uint16_t addr, uint8_t val, component comp);
-uint8_t bus_read(uint16_t addr);
-void bus_write(uint16_t addr, uint8_t val);
-bool dma_active();
-int start(int argc, char **argv);
-uint8_t get_ie_register();
-void set_ie_register(uint8_t val);
-void get_interrupt(uint8_t val);
-uint8_t get_int_flags();
-void set_int_flags(uint8_t val);
-void dma_start(uint8_t val);
-void fifo_init();
-
-bool oam_mode();
+int start(char **argv);
 void cycles(uint8_t cycle);
+uint8_t bus_read(uint16_t addr);
+
+cart *get_cart();
+io *get_io();
+ram *get_ram();
+ppu *get_ppu();
+cpu *get_cpu();
+bus *get_bus();
+timer *get_timer();
+lcd *get_lcd();
+ppu_fifo *get_ppu_fifo();
+
 
 #endif //GBE_BUS_H
 

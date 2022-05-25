@@ -35,7 +35,7 @@ void play(uint8_t val){
 }
 
 void control_audio(){
-    if(playing) printf("playing");
+    //if(playing) printf("playing");
 
     if(!time.empty()) {
         if (!playing) {

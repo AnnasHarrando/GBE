@@ -1,6 +1,8 @@
+#ifndef GBE_CPU_H
+#define GBE_CPU_H
+
 #include <cstdint>
 #include "inst.h"
-#include "emu.h"
 #include <map>
 
 #define BIT_SET(n, on) { if (on) regists.f = regists.f | (1 << n); else regists.f = regists.f & ~(1 << n);}
@@ -54,8 +56,9 @@ public:
     uint8_t ie_register;
     uint8_t int_flags;
     uint16_t fetch;
-    uint16_t load_in_mem;
+    uint16_t memory_location;
     uint16_t pc;
+
     bool master_enabled;
     bool halt;
     bool ime;
@@ -93,6 +96,9 @@ public:
     void it_push(uint16_t val);
 };
 
+void cpu_init();
+
+#endif GBE_CPU_H
 
 
 
