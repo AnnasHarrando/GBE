@@ -10,10 +10,10 @@ public:
     char filename[1024];
     uint32_t rom_size;
     uint8_t *rom_data;
-
     uint8_t cart_type;
 
     uint8_t *cur_rom_bank;
+    uint16_t rom_bank_index = 0;
 
     bool ram_bank_enabled = false;
     bool ram_enabled = false;
@@ -28,12 +28,12 @@ public:
     void battery_load(){
         char fn[1048];
         sprintf(fn, "%s.battery", filename);
-        FILE *fp = fopen(fn, "rb");
+        FILE *fp = fopen(fn, "r");
         //printf("trying to load\n");
 
         if(fp){
             //printf("loaded\n");
-            fread(ram_banks, ram_size, 1, fp);
+            fread(cur_ram_bank, 0x2000, 1, fp);
             fclose(fp);
         }
     }
@@ -41,11 +41,10 @@ public:
     void battery_save(){
         char fn[1048];
         sprintf(fn, "%s.battery", filename);
-        FILE *fp = fopen(fn, "wb");
+        FILE *fp = fopen(fn, "w");
 
         if(fp){
-            //printf("saved\n");
-            fwrite(ram_banks, ram_size, 1, fp);
+            fwrite(cur_ram_bank, 0x2000, 1, fp);
             fclose(fp);
         }
     }
@@ -64,13 +63,10 @@ public:
         rom_size = ftell(fp);
 
         rewind(fp);
-        //printf("rom size: %08X",rom_size);
 
         rom_data = (uint8_t *)(malloc(rom_size));
         fread(rom_data, rom_size, 1, fp);
         fclose(fp);
-
-        //printf("Cartridge Loaded:\n");
 
         cart_type = rom_data[0x0147];
         cur_rom_bank = rom_data + 0x4000;
@@ -100,7 +96,7 @@ public:
 
     };
 
-    uint8_t read(uint16_t address);
+    uint8_t read(uint16_t address) const;
     void write(uint16_t address, uint8_t value);
 
     uint8_t rom_bank_read(uint16_t address);

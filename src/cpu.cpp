@@ -5,20 +5,19 @@
 
 using namespace std;
 
-static bus *bus;
 
-void cpu_init(){
-    bus = get_bus();
-}
+
+FILE *fptr = nullptr;
+
+
 
 void cpu::step(){
 
     if(!halt) {
 
-        opcode = bus->read(pc++);
+        opcode = bus_read(pc++);
         cur_inst = get_instruction(opcode);
-        cycles(1);
-        
+
         memory_location = 0;
         fetch_data();
 
@@ -32,11 +31,9 @@ void cpu::step(){
         }
     }
 
-    if(master_enabled) {
+    if(ime) {
         check_interrupt();
-        ime = false;
     }
-    if(ime) master_enabled = true;
 
 }
 
@@ -52,26 +49,26 @@ void cpu::fetch_data(){
             break;
         case R_D8:
         case D8:
-            fetch = bus->read( pc);
+            fetch = bus_read( pc);
             cycles(1);
             pc++;
             break;
         case R_D16:
         case D16: {
-            uint16_t low = bus->read( pc);
+            uint16_t low = bus_read( pc);
             cycles(1);
             pc++;
-            uint16_t high = bus->read( pc);
+            uint16_t high = bus_read( pc);
             cycles(1);
             pc++;
             fetch = low | (high << 8);
         }
             break;
         case A16_R: {
-            uint16_t low = bus->read( pc);
+            uint16_t low = bus_read( pc);
             cycles(1);
             pc++;
-            uint16_t high = bus->read( pc);
+            uint16_t high = bus_read( pc);
             cycles(1);
             pc++;
             memory_location = low | (high << 8);
@@ -79,23 +76,23 @@ void cpu::fetch_data(){
         }
             break;
         case R_A8:
-            fetch = bus->read( pc);
+            fetch = bus_read( pc);
             cycles(1);
             pc++;
             break;
         case A8_R:
-            memory_location = bus->read( pc) | 0xFF00;
+            memory_location = bus_read( pc) | 0xFF00;
             cycles(1);
             pc++;
             break;
         case R_A16:{
-            uint16_t low = bus->read( pc);
+            uint16_t low = bus_read( pc);
             cycles(1);
             pc++;
-            uint16_t high = bus->read( pc);
+            uint16_t high = bus_read( pc);
             cycles(1);
             pc++;
-            fetch = bus->read(low | (high << 8));
+            fetch = bus_read(low | (high << 8));
             cycles(1);
         } break;
         case MR:
@@ -103,8 +100,8 @@ void cpu::fetch_data(){
             cycles(1);
             break;
         case R_MR:
-            if(cur_inst->reg_2 == C) fetch = bus->read(get_register(cur_inst->reg_2) | 0xFF00);
-            else fetch = bus->read(get_register(cur_inst->reg_2));
+            if(cur_inst->reg_2 == C) fetch = bus_read(get_register(cur_inst->reg_2) | 0xFF00);
+            else fetch = bus_read(get_register(cur_inst->reg_2));
             cycles(1);
             break;
         case MR_R:
@@ -114,7 +111,7 @@ void cpu::fetch_data(){
             break;
         case MR_D8:
             memory_location = get_register(cur_inst->reg_1);
-            fetch = bus->read( pc);
+            fetch = bus_read( pc);
             cycles(1);
             pc++;
             break;
@@ -129,17 +126,17 @@ void cpu::fetch_data(){
             set_register(HL, get_register(HL) + 1);
             break;
         case R_HLI:
-            fetch = bus->read(regists.hl);
+            fetch = bus_read(regists.hl);
             cycles(1);
             regists.hl++;
             break;
         case R_HLD:
-            fetch = bus->read(regists.hl);
+            fetch = bus_read(regists.hl);
             cycles(1);
             regists.hl--;
             break;
         case HL_SPR:{
-            fetch = bus->read( pc);
+            fetch = bus_read( pc);
             cycles(1);
             pc++;
         }
@@ -190,11 +187,11 @@ void cpu::exec(){
             else{
                 if(memory_location != 0){
                     if(opcode == 0x08){
-                        bus->write(memory_location,regists.sp & 0xFF);
-                        bus->write(memory_location+1,regists.sp >> 8);
+                        bus_write(memory_location,regists.sp & 0xFF);
+                        bus_write(memory_location+1,regists.sp >> 8);
                         cycles(1);
                     }
-                    else bus->write(memory_location,fetch);
+                    else bus_write(memory_location,fetch);
                     cycles(1);
                 }
                 else set_register(cur_inst->reg_1, fetch);
@@ -203,15 +200,15 @@ void cpu::exec(){
             }
             break;
         case LDH:
-            if(memory_location != 0) bus->write(memory_location,regists.a);
-            else regists.a = bus->read(0xFF00 | fetch);
+            if(memory_location != 0) bus_write(memory_location,regists.a);
+            else regists.a = bus_read(0xFF00 | fetch);
             cycles(1);
             break;
         case DEC:
             if(opcode == 0x35) {
-                bus->write(memory_location, bus->read(memory_location)-1);
+                bus_write(memory_location, bus_read(memory_location)-1);
                 cycles(1);
-                set_flags(bus->read(memory_location) == 0,1,(bus->read(memory_location) & 0xF) == 0xF,-1);
+                set_flags(bus_read(memory_location) == 0,1,(bus_read(memory_location) & 0xF) == 0xF,-1);
             }
             else {
                 set_register(cur_inst->reg_1, get_register(cur_inst->reg_1) - 1);
@@ -221,9 +218,9 @@ void cpu::exec(){
             break;
         case INC:
             if(opcode == 0x34) {
-                bus->write(memory_location, bus->read(memory_location)+1);
+                bus_write(memory_location, bus_read(memory_location)+1);
                 cycles(1);
-                set_flags(bus->read(memory_location) == 0,0,(bus->read(memory_location) & 0xF) == 0,-1);
+                set_flags(bus_read(memory_location) == 0,0,(bus_read(memory_location) & 0xF) == 0,-1);
             }
             else {
                 set_register(cur_inst->reg_1, get_register(cur_inst->reg_1) + 1);
@@ -315,7 +312,7 @@ void cpu::exec(){
         }
             break;
         case DI:
-            master_enabled = false;
+            ime = false;
             break;
         case EI:
             ime = true;
@@ -343,7 +340,7 @@ void cpu::exec(){
             }
             break;
         case RETI:
-            master_enabled = true;
+            ime = true;
             pc = pop();
             break;
         case RST:
@@ -386,6 +383,8 @@ void cpu::exec(){
             printf("Unknown type %02X",opcode);
             exit(-3);
     }
+    cycles(1);
+
 }
 
 void cpu::cb(){
@@ -402,7 +401,7 @@ void cpu::cb(){
     cycles(1);
 
     if(cb_reg == HL) {
-        cb_fetch = bus->read(regists.hl);
+        cb_fetch = bus_read(regists.hl);
         cycles(2);
     }
     else cb_fetch = get_register(cb_reg);
@@ -456,17 +455,17 @@ void cpu::cb(){
 
 
     if(cb_op < 0x40 || cb_op >= 0x80){
-        if(cb_reg == HL) bus->write(regists.hl,val);
+        if(cb_reg == HL) bus_write(regists.hl,val);
         else set_register(cb_reg, val);
     }
 }
 
-void cpu::set_flags(int z, int n, int h, int c){
-    if(z >= 0) BIT_SET(7,z);
-    if(n >= 0) BIT_SET(6,n);
-    if(h >= 0) BIT_SET(5,h);
-    if(c >= 0) BIT_SET(4,c);
-}
+    void cpu::set_flags(int z, int n, int h, int c){
+        if(z >= 0) BIT_SET(7,z);
+        if(n >= 0) BIT_SET(6,n);
+        if(h >= 0) BIT_SET(5,h);
+        if(c >= 0) BIT_SET(4,c);
+    }
 
 void cpu::set_register(REG regis,uint16_t val) {
     switch(regis){
@@ -479,7 +478,7 @@ void cpu::set_register(REG regis,uint16_t val) {
         case H: regists.h = val & 0xFF; break;
         case L: regists.l = val & 0xFF; break;
 
-        case AF: regists.af = val; break;
+        case AF: regists.af = val & 0xFFF0; break;
         case BC: regists.bc = val; break;
         case DE: regists.de = val; break;
         case HL: regists.hl = val; break;
@@ -519,27 +518,20 @@ uint16_t cpu::get_register(REG regis) {
     }
 }
 
-void cpu::it_push(uint16_t val){
-    regists.sp--;
-    bus->write(regists.sp,val >> 8);
-    regists.sp--;
-    bus->write(regists.sp,val & 0xFF);
-}
-
 void cpu::push(uint16_t val){
     regists.sp--;
-    bus->write(regists.sp,val >> 8);
+    bus_write(regists.sp,val >> 8);
     cycles(1);
     regists.sp--;
-    bus->write(regists.sp,val & 0xFF);
+    bus_write(regists.sp,val & 0xFF);
     cycles(1);
 }
 
 uint16_t cpu::pop(){
-    uint8_t low = bus->read(regists.sp);
+    uint8_t low = bus_read(regists.sp);
     regists.sp++;
     cycles(1);
-    uint8_t high = bus->read(regists.sp);
+    uint8_t high = bus_read(regists.sp);
     regists.sp++;
     cycles(1);
 
@@ -568,11 +560,13 @@ void cpu::check_interrupt(){
 
 bool cpu::check_int(uint16_t addr, uint8_t interrupt){
     if((int_flags & interrupt) && (ie_register & interrupt)){
-        it_push(pc);
+        cycles(2);
+        push(pc);
         pc = addr;
+        cycles(1);
         int_flags &= ~interrupt;
         halt = false;
-        master_enabled = false;
+        ime = false;
         return true;
     }
     return false;

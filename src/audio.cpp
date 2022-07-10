@@ -1,70 +1,149 @@
 #include <cstdio>
 #include "audio.h"
-#include <queue>
-
-SDL_AudioSpec wavSpec;
-Uint32 wavLength;
-Uint8 *wavBuffer;
-SDL_AudioDeviceID deviceId;
-
-std::queue<uint16_t> time;
-bool playing = false;
-unsigned long starting_time = 0;
-
-uint8_t NR21 = 0;
-uint8_t NR22 = 0;
-uint8_t NR23 = 0;
-uint8_t NR24 = 0;
-
-uint8_t NR52 = 0;
-
-#define DUTY_NR ((NR21 & 0b11000000) >> 6)
-
-uint8_t waveform[4][8] = {
-        {0,0,0,0,0,0,0,1},
-        {0,0,0,0,0,0,1,1},
-        {0,0,0,0,1,1,1,1},
-        {1,1,1,1,1,1,0,0}
-};
-
-void play(uint8_t val){
-    uint16_t temp = (64-val)*4;
-    time.push(temp);
 
 
+
+uint8_t audio::read(uint16_t addr) {
+    switch(addr){
+        case 0xFF10: return channel1.read(0);
+        case 0xFF11: return channel1.read(1);
+        case 0xFF12: return channel1.read(2);
+        case 0xFF13: return channel1.read(3);
+        case 0xFF14: return channel1.read(4);
+        case 0xFF15:
+        case 0xFF1F: return 0;
+        case 0xFF16: return channel2.read(1);
+        case 0xFF17: return channel2.read(2);
+        case 0xFF18: return channel2.read(3);
+        case 0xFF19: return channel2.read(4);
+        case 0xFF1A: return NR30;
+        case 0xFF1B: return NR31;
+        case 0xFF1C: return NR32;
+        case 0xFF1D: return NR33;
+        case 0xFF1E: return NR34;
+        case 0xFF20: return channel4.read(1);
+        case 0xFF21: return channel4.read(2);
+        case 0xFF22: return channel4.read(3);
+        case 0xFF23: return channel4.read(4);
+        case 0xFF24: return NR50;
+        case 0xFF25: return NR51;
+        case 0xFF26: return NR52;
+        default: return waveform[addr-0xFF30];
+
+
+    }
 }
 
-void control_audio(){
-    //if(playing) printf("playing");
+void audio::write(uint16_t addr, uint8_t val) {
+    switch(addr) {
+        case 0xFF10:
+            channel1.write(0,val); break;
+        case 0xFF11:
+            channel1.write(1,val); break;
+        case 0xFF12:
+            channel1.write(2,val); break;
+        case 0xFF13:
+            channel1.write(3,val); break;
+        case 0xFF14:
+            channel1.write(4,val); break;
+        case 0xFF16:
+            channel2.write(1,val); break;
+        case 0xFF17:
+            channel2.write(2,val); break;
+        case 0xFF18:
+            channel2.write(3,val); break;
+        case 0xFF19:
+            channel2.write(4,val); break;
+        case 0xFF1A:
+            NR30 = val; break;
+        case 0xFF1B:
+            NR31 = val;
+            NR3_length = 256 - val; break;
+        case 0xFF1C:
+            NR32 = val; break;
+        case 0xFF1D:
+            NR33 = val; break;
+        case 0xFF1E: {
+            NR34 = val;
+            if((val >> 7) & 1) wave_trigger();
+        } break;
+        case 0xFF20:
+            channel4.write(1,val); break;
+        case 0xFF21:
+            channel4.write(2,val); break;
+        case 0xFF22:
+            channel4.write(3,val); break;
+        case 0xFF23:
+            channel4.write(4,val); break;
+        case 0xFF24:
+            NR50 = val; break;
+        case 0xFF25:
+            NR51 = val; break;
+        case 0xFF26:
+            NR52 = val; break;
+    }
 
-    if(!time.empty()) {
-        if (!playing) {
-            SDL_QueueAudio(deviceId, wavBuffer, wavLength);
-            SDL_PauseAudioDevice(deviceId, 0);
-            starting_time = SDL_GetTicks();
-            playing = true;
-        }
+    if(addr >= 0xFF30){
+        waveform[addr & 0xF] = val;
+    }
+}
 
-        unsigned long cur_time = SDL_GetTicks();
-        if (cur_time - starting_time > time.front()) {
-            SDL_ClearQueuedAudio(deviceId);
-            time.pop();
-            if (!time.empty()) {
-                SDL_QueueAudio(deviceId, wavBuffer, wavLength);
-                SDL_PauseAudioDevice(deviceId, 0);
-                starting_time = SDL_GetTicks();
-            }
-            else playing = false;
+void audio::tick() {
+
+    channel1.tick();
+    channel2.tick();
+    channel4.tick();
+
+    if(NR3_timer > 0) NR3_timer--;
+    if(NR3_timer == 0){
+
+        NR3_timer = (2048 - (uint16_t)(((NR34 & 0b111) << 8) | NR33)) * 2;
+        NR3_index++;
+        if(NR3_index == 16) NR3_index = 0;
+
+        if(NR3_enabled && ((NR30 >> 7) & 1)){
+            if(NR3_index % 2 == 0) NR3_cur_val = ((waveform[NR3_index/2] >> 4) & 0b1111);
+            else NR3_cur_val = waveform[NR3_index/2] & 0b1111;
+
+            nr3_get_vol();
         }
+        else NR3_cur_val = 0;
     }
 
 }
 
-void audio_init(){
 
-    if(SDL_Init(SDL_INIT_AUDIO) != 0) exit(-23);
-    SDL_LoadWAV("C:/Users/annas/Downloads/src_beep-02.wav", &wavSpec, &wavBuffer, &wavLength);
-    deviceId = SDL_OpenAudioDevice(NULL, 0, &wavSpec, NULL, 0);
-
-
+void audio::nr3_get_vol() {
+    switch ((NR32 >> 5) & 0b11) {
+        case 0b00: NR3_cur_val = 0; break;
+        case 0b10: NR3_cur_val >>= 1; break;
+        case 0b11: NR3_cur_val >>= 2; break;
+    }
 }
+
+void audio::fs_tick() {
+
+    channel1.fs_tick(fs_clock);
+    channel2.fs_tick(fs_clock);
+    channel4.fs_tick(fs_clock);
+
+    if(fs_clock % 2 == 0){
+        if(NR3_length > 0 && NR3_len_enabled){
+            NR3_length--;
+            if(NR3_length == 0) NR3_enabled = false;
+        }
+    }
+
+    fs_clock++;
+    if(fs_clock == 8) fs_clock = 0;
+}
+
+void audio::wave_trigger() {
+    NR3_enabled = true;
+
+    if(NR3_length == 0) NR3_length = 256;
+    NR3_timer = (2048 - (((NR34 & 0b111) << 8) | NR33))*2;
+    NR3_index = 0;
+}
+
+

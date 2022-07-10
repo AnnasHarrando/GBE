@@ -6,14 +6,9 @@
 #include "lcd.h"
 #include "audio.h"
 
-class io {
-public:
-    uint8_t serial_data[2] = {0};
 
-    uint8_t read(uint16_t addr);
-    void write(uint16_t addr, uint8_t val);
-
-};
+uint8_t io_read(uint16_t addr);
+void io_write(uint16_t addr, uint8_t val);
 
 void io_init();
 #endif

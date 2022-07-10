@@ -59,7 +59,6 @@ public:
     uint16_t memory_location;
     uint16_t pc;
 
-    bool master_enabled;
     bool halt;
     bool ime;
 
@@ -74,7 +73,6 @@ public:
         halt = false;
         ie_register = 0;
         int_flags = 0;
-        master_enabled = false;
         ime = false;
     }
 

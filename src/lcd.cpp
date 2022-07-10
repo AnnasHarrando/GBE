@@ -64,13 +64,11 @@ void lcd::update_palette(uint8_t val, uint8_t palette){
             bg_color[3] = colors_default[(val >> 6) & 0b11];
             break;
         case 1:
-            sp1_color[0] = colors_default[val & 0b11];
             sp1_color[1] = colors_default[(val >> 2) & 0b11];
             sp1_color[2] = colors_default[(val >> 4) & 0b11];
             sp1_color[3] = colors_default[(val >> 6) & 0b11];
             break;
         case 2:
-            sp2_color[0] = colors_default[val & 0b11];
             sp2_color[1] = colors_default[(val >> 2) & 0b11];
             sp2_color[2] = colors_default[(val >> 4) & 0b11];
             sp2_color[3] = colors_default[(val >> 6) & 0b11];

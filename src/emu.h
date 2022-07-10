@@ -18,17 +18,18 @@
 
 int start(char **argv);
 void cycles(uint8_t cycle);
-uint8_t bus_read(uint16_t addr);
+uint64_t get_timing();
 
 cart *get_cart();
-io *get_io();
 ram *get_ram();
 ppu *get_ppu();
 cpu *get_cpu();
-bus *get_bus();
 timer *get_timer();
 lcd *get_lcd();
 ppu_fifo *get_ppu_fifo();
+audio *get_audio();
+
+SDL_AudioDeviceID get_dev();
 
 
 #endif //GBE_BUS_H

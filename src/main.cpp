@@ -3,6 +3,6 @@
 int main(int argv, char* args[])
 {
     if(argv > 1) start(args);
-    printf("No file path to load in. \n");
+    else printf("No file path to load in. \n");
     return 0;
 }

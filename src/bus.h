@@ -3,12 +3,9 @@
 
 #include <cstdint>
 
-class bus {
-public:
-    uint8_t read(uint16_t addr);
-    void write(uint16_t addr, uint8_t val);
 
-};
+uint8_t bus_read(uint16_t addr, bool IsCPU = false);
+void bus_write(uint16_t addr, uint8_t val);
 
 void bus_init();
 

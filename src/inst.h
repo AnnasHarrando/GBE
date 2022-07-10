@@ -105,6 +105,4 @@ void inst_init();
 
 struct instruction *get_instruction(uint8_t opcode);
 
-char *inst_name(INST t);
-
 #endif GBE_INST_H

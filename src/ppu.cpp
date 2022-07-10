@@ -4,13 +4,11 @@
 
 static lcd *lcd;
 static ppu_fifo *ppu_fifo;
-static bus *bus;
 static cpu *cpu;
 
 void ppu_init(){
     lcd = get_lcd();
     ppu_fifo = get_ppu_fifo();
-    bus = get_bus();
     cpu = get_cpu();
 }
 
@@ -44,13 +42,12 @@ void ppu::dma_start(uint8_t val){
 }
 
 void ppu::dma_tick(){
-    if(!dma_active) return;
 
     if(dma_delay){
         dma_delay--;
         return;
     }
-    oam_write(dma_byte, bus->read((dma_val * 0x100) + dma_byte));
+    oam_write(dma_byte, bus_read((dma_val * 0x100) + dma_byte));
     dma_byte++;
     dma_active = dma_byte < 0xA0;
 
@@ -81,7 +78,7 @@ static const int VBLANK_STAT = 1;
 
 void ppu::inc_ly(){
 
-    if(lcd->window_enabled() && lcd->ly >= lcd->y_win && lcd->ly < lcd->y_win + 144) window_line++;
+    if(lcd->window_enabled() && lcd->ly >= lcd->y_win && lcd->y_win < 144) window_line++;
 
     lcd->ly++;
 
@@ -103,17 +100,19 @@ void ppu::oam_mode(){
 void ppu::draw_mode(){
     ppu_fifo->proc();
 
-    if(ppu_fifo->drawing_stopped()){
+    if(ppu_fifo->drawing_stopped()) {
         ppu_fifo->reset();
+        ppu_fifo->obj_drawn = 0;
         lcd->lcds_set(MODE_HBLANK);
 
-        if(lcd->stat_int(STAT_HBLANK)) cpu->get_interrupt(LCD_STAT);
+        if (lcd->stat_int(STAT_HBLANK)) cpu->get_interrupt(LCD_STAT);
+
+
     }
 }
 
 void ppu::vblank_mode(){
     if(dots >= 456){
-
         inc_ly();
 
         if(lcd->ly >= 154){
@@ -136,11 +135,14 @@ void ppu::hblank_mode(){
             cpu->get_interrupt(VBLANK_STAT);
 
             if(lcd->stat_int(STAT_VBLANK)) cpu->get_interrupt(LCD_STAT);
-            if(lcd->stat_int(STAT_OAM)) cpu->get_interrupt(LCD_STAT);
 
+            while(SDL_GetQueuedAudioSize(get_dev()) > 0){
+
+            }
         }
         else {
             lcd->lcds_set(MODE_OAM);
+            if(lcd->stat_int(STAT_OAM)) cpu->get_interrupt(LCD_STAT);
         }
 
         dots = 0;

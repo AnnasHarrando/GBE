@@ -27,6 +27,9 @@ SDL_GameController *gamecontroller = nullptr;
 
 static int scale = 4;
 
+static cpu *cpu = get_cpu();
+static ppu *ppu = get_ppu();
+
 void ui_init(){
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
 
@@ -50,7 +53,7 @@ void ui_init(){
                                    SDL_PIXELFORMAT_ARGB8888,
                                    SDL_TEXTUREACCESS_STREAMING,
                                 1024, 768);
-#if false
+#if true
     SDL_CreateWindowAndRenderer(16 * 8 * scale, 32 * 8 * scale, 0,
                                 &sdlDebugWindow, &sdlDebugRenderer);
 
@@ -237,7 +240,7 @@ void t_update_dbg_window() {
     SDL_RenderPresent(BgDebugRenderer);
 }
 
-void oam_update_dbg_window(uint8_t *val) {
+void oam_update_dbg_window() {
     int xDraw = 0;
     int yDraw = 0;
 
@@ -251,7 +254,7 @@ void oam_update_dbg_window(uint8_t *val) {
 
     for (int y=0; y<4; y++) {
         for (int x=0; x<10; x++) {
-            uint16_t tile = 0x8000 + val[x + y*10] *16;
+            uint16_t tile = 0x8000 + ppu->oam_ram[x + y*10].tile *16;
             oam_display_tile(OamDebugScreen, tile, xDraw + (x * (scale)), yDraw + (y * (scale)));
             xDraw += (8 * (scale));
         }
@@ -311,14 +314,14 @@ bool right;
 
 bool running = true;
 
-uint32_t fps = 1000/60;
+double speed = 1.0;
 
 bool get_running(){
     return running;
 }
 
-uint32_t get_fps(){
-    return fps;
+double get_scale(){
+    return speed;
 }
 
 void set_button_type(uint8_t val){
@@ -327,7 +330,7 @@ void set_button_type(uint8_t val){
 }
 
 uint8_t get_button_press(){
-    uint8_t val = 0b11000000;
+    uint8_t val;
 
     if(action_button){
         if(!a) val |= 0b1;
@@ -369,14 +372,16 @@ bool ui_handle_events(){
                 case SDLK_k: b = true; break;
                 case SDLK_p: start_button = true; break;
                 case SDLK_u: select_button = true; break;
-                case SDLK_1: fps = 1000/60; break;
-                case SDLK_2: fps = 500/60; break;
-                case SDLK_3: fps = 125/60; break;
+                case SDLK_1: speed = 1.0; break;
+                case SDLK_2: speed = 0.5; break;
+                case SDLK_3: speed = 0.25; break;
                 case SDLK_SPACE: running = !running; break;
                 case SDLK_LALT: bg_mode = !bg_mode; break;
                 case SDLK_COMMA: save = true; break;
                 case SDLK_m: load = true; break;
             }
+
+            cpu->get_interrupt(16);
         }
         if(event.type == SDL_KEYUP){
             switch(event.key.keysym.sym){
@@ -423,9 +428,6 @@ bool ui_handle_events(){
         }
 
         if (event.type == SDL_QUIT) {
-
-            SDL_DestroyWindow(window);
-            SDL_DestroyWindow(sdlDebugWindow);
             return false;
         }
     }

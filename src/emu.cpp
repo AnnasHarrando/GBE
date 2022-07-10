@@ -1,24 +1,41 @@
 #include "emu.h"
+#include <chrono>
+#include <iostream>
 
 using namespace std;
 
 static cpu cpu;
 static cart cart;
 static ram ram;
-static io io;
 static ppu ppu;
-static bus bus;
 static timer timer;
 static lcd lcd;
 static ppu_fifo ppu_fifo;
+static audio audio;
 
 void save_states();
 void load_states();
 void init_objects();
 DWORD WINAPI cpu_run(LPVOID lpParameter);
 
+SDL_AudioSpec audioSpec;
+SDL_AudioDeviceID dev;
+float *buffer = static_cast<float *>(malloc(1024 * sizeof(float)));
 
 int start(char **argv) {
+    SDL_Init(SDL_INIT_AUDIO);
+
+    SDL_zero(audioSpec);
+    audioSpec.freq = 44100;
+    audioSpec.format = AUDIO_F32SYS;
+    audioSpec.channels = 2;
+    audioSpec.samples = 1024;	// Adjust as needed
+    audioSpec.callback = NULL;
+
+    dev = SDL_OpenAudioDevice(NULL,0,&audioSpec, NULL,0);
+
+    SDL_PauseAudioDevice(dev, 0);
+
     cart.load_rom(argv[1]);
 
     init_objects();
@@ -37,32 +54,86 @@ int start(char **argv) {
         return 1;
     }
 
+    static long prev_frame_time = 0;
+    static long fps = 16;
+
     while(ui_handle_events()){
-        update_screen(ppu.buffer);
-#if false
+        uint32_t end_time = SDL_GetTicks();
+
+        if((end_time - prev_frame_time) > fps){
+            update_screen(ppu.buffer);
+            prev_frame_time = SDL_GetTicks();
+        }
+
+#if true
         update_dbg_window();
         t_update_dbg_window();
-        oam_update_dbg_window(get_oam_tiles());
+        oam_update_dbg_window();
 #endif
 
     }
+
+    if(cart.battery) cart.battery_save();
 }
 
+uint8_t sample_period = 0;
+uint16_t fs_counter = 0;
+uint16_t buffer_index = 0;
+
 void cycles(uint8_t cycle){
+
     for(int i=0; i<cycle; i++) {
-
         for (int j = 0; j < 4; j++) {
+             timer.tick();
+             ppu.tick();
+             audio.tick();
 
-            timer.tick();
-            ppu.tick();
+            if(fs_counter == 8192) {
+                fs_counter = 0;
+                audio.fs_tick();
+            }
+            else fs_counter++;
         }
 
-        ppu.dma_tick();
+        if(ppu.dma_active)ppu.dma_tick();
+
+
+        if(sample_period == (uint8_t)(23 / get_scale())){
+            float temp = 0;
+
+            if(audio.sound_enabled()) {
+                if (((audio.NR51 >> 4) & 1)) temp += audio.left_vol() * (float) audio.channel1.cur_val / 10;
+                if (((audio.NR51 >> 5) & 1)) temp += audio.left_vol() * (float) audio.channel2.cur_val / 10;
+                if (((audio.NR51 >> 6) & 1)) temp += audio.left_vol() * (float) audio.NR3_cur_val / 10;
+                if (((audio.NR51 >> 7) & 1)) temp += audio.left_vol() * (float) audio.channel4.cur_val / 10;
+            }
+            buffer[buffer_index] = temp;
+            buffer_index++;
+
+            if(audio.sound_enabled()) {
+                temp = 0;
+                if (audio.NR51 & 1) temp += audio.right_vol() * (float) audio.channel1.cur_val / 10;
+                if (((audio.NR51 >> 1) & 1)) temp += audio.right_vol() * (float) audio.channel2.cur_val / 10;
+                if (((audio.NR51 >> 2) & 1)) temp += audio.right_vol() * (float) audio.NR3_cur_val / 10;
+                if (((audio.NR51 >> 3) & 1)) temp += audio.left_vol() * (float) audio.channel4.cur_val / 10;
+            }
+
+            buffer[buffer_index] = temp;
+            buffer_index++;
+
+            sample_period = 0;
+        }
+        else {
+            sample_period++;
+        }
+
+        if(buffer_index == 2048){
+            SDL_QueueAudio(dev, buffer, 8192);
+            buffer_index = 0;
+        }
     }
 
-    for(int i=0; i<0; i++){
-        //timing
-    }
+
 }
 
 DWORD WINAPI cpu_run(LPVOID lpParameter)
@@ -82,36 +153,27 @@ DWORD WINAPI cpu_run(LPVOID lpParameter)
     }
 }
 
-uint8_t bus_read(uint16_t addr){
-    return bus.read(addr);
-}
-
 class cpu saved_cpu;
 class cart saved_cart;
 class ram saved_ram;
-class io saved_io;
 class ppu saved_ppu;
-class bus saved_bus;
 class timer saved_timer;
 class lcd saved_lcd;
 class ppu_fifo saved_ppu_fifo;
 
 
 class cart *get_cart() { return &cart;}
-class io *get_io() { return &io;}
 class ram *get_ram() { return &ram;}
 class ppu *get_ppu() { return &ppu;}
 class cpu *get_cpu() { return &cpu;}
-class bus *get_bus() { return &bus;}
 class timer *get_timer() { return &timer;}
 class lcd *get_lcd() { return &lcd;}
 class ppu_fifo *get_ppu_fifo() { return &ppu_fifo;}
+class audio *get_audio() { return &audio;}
 
 void save_states(){
-    saved_bus = bus;
     saved_cart = cart;
     saved_cpu = cpu;
-    saved_io = io;
     saved_lcd = lcd;
     saved_ppu = ppu;
     saved_ppu_fifo = ppu_fifo;
@@ -120,10 +182,8 @@ void save_states(){
 }
 
 void load_states(){
-    bus = saved_bus;
     cart = saved_cart;
     cpu = saved_cpu;
-    io = saved_io;
     lcd = saved_lcd;
     ppu = saved_ppu;
     ppu_fifo = saved_ppu_fifo;
@@ -134,19 +194,13 @@ void load_states(){
 void init_objects(){
     inst_init();
     fifo_init();
-    audio_init();
     bus_init();
-    cpu_init();
     io_init();
     ppu_init();
     timer_init();
     ui_init();
 }
 
-uint8_t *get_oam_tiles(){
-    uint8_t *temp = static_cast<uint8_t *>(malloc(40));
-    for(int i=0; i<40; i++){
-        temp[i] = ppu.oam_ram[i].tile;
-    }
-    return temp;
+SDL_AudioDeviceID get_dev(){
+    return dev;
 }

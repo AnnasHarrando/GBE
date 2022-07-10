@@ -4,9 +4,16 @@
 #include "ppu.h"
 #include <queue>
 
+typedef enum {
+    BG,
+    WINDOW,
+    OBJ1,
+    OBJ2
+}pixel_type;
+
 typedef struct {
-    uint32_t color;
-    bool isWindow;
+    uint8_t colorID;
+    pixel_type type;
 }pixel;
 
 
@@ -20,13 +27,15 @@ typedef enum {
 
 class ppu_fifo {
 public:
-    std::queue<pixel> fifo_pipeline;
+    uint8_t obj_drawn = 0;
+
+    std::vector<pixel> fifo_pipeline;
     STATE cur_state = F_TILE;
     uint8_t line_x = 0;
     uint8_t pushed_x = 0;
     uint8_t fetch_x = 0;
-    uint8_t bgw_fetch_data[3] = {0};
-    uint8_t fetch_entry_data[6] = {0};
+    uint8_t bgw_fetch_index = 0;
+    uint8_t bgw_fetch_data[2] = {0};
     uint8_t map_y = 0;
     uint8_t map_x = 0;
     uint8_t tile_y = 0;
@@ -38,8 +47,6 @@ public:
     void proc();
     void reset();
     bool push_pixel();
-    void load_sprite_tile();
-    void load_sprite_data(uint8_t val);
     bool window_in_x();
     bool window_in_y();
     void load_window();
@@ -47,7 +54,9 @@ public:
     pixel pop();
     void push(pixel val);
     void draw_pixel();
-    uint32_t get_sprite(uint8_t bit, uint32_t color, uint8_t bg);
+
+
+    void load_sprite();
 };
 
 void fifo_init();
