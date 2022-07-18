@@ -53,7 +53,7 @@ void ui_init(){
                                    SDL_PIXELFORMAT_ARGB8888,
                                    SDL_TEXTUREACCESS_STREAMING,
                                 1024, 768);
-#if true
+#if false
     SDL_CreateWindowAndRenderer(16 * 8 * scale, 32 * 8 * scale, 0,
                                 &sdlDebugWindow, &sdlDebugRenderer);
 
