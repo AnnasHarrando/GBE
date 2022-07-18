@@ -65,7 +65,7 @@ int start(char **argv) {
             prev_frame_time = SDL_GetTicks();
         }
 
-#if true
+#if false
         update_dbg_window();
         t_update_dbg_window();
         oam_update_dbg_window();
